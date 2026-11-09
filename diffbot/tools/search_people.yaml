@@ -1,0 +1,75 @@
+identity:
+  name: search_people
+  author: diffbot
+  label:
+    en_US: Search people
+description:
+  human:
+    en_US: Find people who have a public professional presence in the Diffbot Knowledge Graph. This is not a lookup for private individuals.
+  llm: >
+    Search public professional profiles in the Diffbot Knowledge Graph.
+    Filter by name, employer, job title, city, or country. At least one of those is required.
+    Results include name, up to three employment records, location, LinkedIn URI, and the Diffbot id.
+    Email addresses and phone numbers are not requested and are dropped if the API returns them.
+    Do not use this to identify private individuals who have no public professional profile.
+parameters:
+  - name: name
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Name
+    human_description:
+      en_US: Person name.
+    llm_description: Person name to match.
+  - name: employer
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Employer
+    human_description:
+      en_US: Employer name from a public employment record.
+    llm_description: employments.employer.name value.
+  - name: title
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Title
+    human_description:
+      en_US: Job title, for example Chief Executive Officer. Abbreviations are not expanded in this version.
+    llm_description: employments.title value. Pass the full title; abbreviations are not expanded.
+  - name: city
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: City
+    human_description:
+      en_US: City on the public profile.
+    llm_description: location.city.name.
+  - name: country
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Country
+    human_description:
+      en_US: Country on the public profile.
+    llm_description: location.country.name.
+  - name: size
+    type: number
+    required: false
+    form: llm
+    default: 5
+    min: 1
+    max: 10
+    label:
+      en_US: Maximum results
+    human_description:
+      en_US: How many people to return, from 1 to 10.
+    llm_description: Result cap from 1 to 10. Default 5.
+extra:
+  python:
+    source: tools/search_people.py

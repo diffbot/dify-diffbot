@@ -1,0 +1,78 @@
+identity:
+  name: search_web
+  author: diffbot
+  label:
+    en_US: Web search
+description:
+  human:
+    en_US: Search Diffbot's web index. Results include a relevance score, title, URL, date, and a passage from the page. A query that is only url:https://example.com/page reads the indexed copy of that page.
+  llm: >
+    Search Diffbot's independent web index. Prefer this over a generic web search when the user wants
+    primary sources. Returns ranked results with score, title, pageUrl, date, and a content passage.
+    Operators inside the query: site:example.com, after:YYYY-MM-DD, before:YYYY-MM-DD.
+    A query that is only url:https://example.com/page returns the indexed page instead of a short passage.
+    Use the Extract page tool when the live current page matters more than the indexed copy.
+parameters:
+  - name: query
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Query
+    human_description:
+      en_US: Search text. Use a single url:https://... value to read Diffbot's indexed copy of that page.
+    llm_description: >
+      Search text. Supports site:, after:YYYY-MM-DD, and before:YYYY-MM-DD.
+      A query of only url:https://example.com/page returns the stored page.
+    placeholder:
+      en_US: hypothyroidism treatment guidelines
+  - name: num_results
+    type: number
+    required: false
+    form: llm
+    default: 5
+    min: 1
+    max: 10
+    label:
+      en_US: Number of results
+    human_description:
+      en_US: How many results to return, from 1 to 10. Defaults to 5.
+    llm_description: Maximum number of results, from 1 to 10. Default 5.
+  - name: snippet_length
+    type: select
+    required: false
+    form: llm
+    label:
+      en_US: Snippet length
+    human_description:
+      en_US: "How much of each page to return. Leave empty for a short passage, or full for the whole indexed page on a url: lookup."
+    llm_description: >
+      Passage size. short is about 1 KB, then medium, long, and full.
+      Leave empty to use short, or full automatically when the query is only a url: lookup.
+    options:
+      - value: short
+        label:
+          en_US: Short
+      - value: medium
+        label:
+          en_US: Medium
+      - value: long
+        label:
+          en_US: Long
+      - value: full
+        label:
+          en_US: Full page
+  - name: max_tokens
+    type: number
+    required: false
+    form: llm
+    min: 500
+    max: 8000
+    label:
+      en_US: Max tokens
+    human_description:
+      en_US: Optional cap on the response size. Diffbot shortens passages to fit. Ignored for a full-page lookup.
+    llm_description: Optional response token cap from 500 to 8000. Omit it unless the context window is tight.
+extra:
+  python:
+    source: tools/search_web.py

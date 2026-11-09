@@ -1,0 +1,103 @@
+identity:
+  name: search_news
+  author: diffbot
+  label:
+    en_US: Search news
+description:
+  human:
+    en_US: Search news, press releases, and articles in the Diffbot Knowledge Graph by mentioned entity, phrase, publisher, language, or publication date.
+  llm: >
+    Search Diffbot Knowledge Graph articles. Prefer this for news about a named entity.
+    mentions matches tags.label (entity names as Diffbot tagged them). If that returns nothing,
+    retry the same words in text. At least one of mentions, text, title, publisher, since, or until
+    is required. Results are ordered with revSortBy:date (newest publication date first) and omit
+    full article HTML. Set include_text only when a short excerpt of the body is needed.
+parameters:
+  - name: mentions
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Mentioned entities
+    human_description:
+      en_US: Comma-separated entity names the article must mention, for example Diffbot, OpenAI. Maximum 5.
+    llm_description: Comma-separated tags.label values, OR-combined. Maximum 5. These are entity names, not free keywords.
+  - name: text
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Body phrase
+    human_description:
+      en_US: Phrase that must appear in the article body.
+    llm_description: Phrase matched against the article text field.
+  - name: title
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Headline phrase
+    human_description:
+      en_US: Phrase that must appear in the headline.
+    llm_description: Phrase matched against the article title.
+  - name: publisher
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Publisher
+    human_description:
+      en_US: Publisher site name, for example Reuters.
+    llm_description: siteName value.
+  - name: language
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Language
+    human_description:
+      en_US: Two- or three-letter language code, for example en. Not enough on its own.
+    llm_description: ISO 639 language code such as en. Combine it with another filter.
+  - name: since
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Published from
+    human_description:
+      en_US: Earliest publication date, YYYY-MM-DD, inclusive.
+    llm_description: Inclusive start date in YYYY-MM-DD.
+  - name: until
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Published until
+    human_description:
+      en_US: Latest publication date, YYYY-MM-DD, inclusive.
+    llm_description: Inclusive end date in YYYY-MM-DD.
+  - name: include_text
+    type: boolean
+    required: false
+    form: llm
+    default: false
+    label:
+      en_US: Include body excerpt
+    human_description:
+      en_US: Include a truncated article body. Off by default.
+    llm_description: When true, each result includes a truncated text field. Default false.
+  - name: size
+    type: number
+    required: false
+    form: llm
+    default: 5
+    min: 1
+    max: 10
+    label:
+      en_US: Maximum results
+    human_description:
+      en_US: How many articles to return, from 1 to 10.
+    llm_description: Result cap from 1 to 10. Default 5.
+extra:
+  python:
+    source: tools/search_news.py

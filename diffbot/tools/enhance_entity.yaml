@@ -1,0 +1,91 @@
+identity:
+  name: enhance_entity
+  author: diffbot
+  label:
+    en_US: Enhance entity
+description:
+  human:
+    en_US: Match a person or organization from a name, homepage, or employer and return the Knowledge Graph record Diffbot considers the best fit.
+  llm: >
+    Call Diffbot Enhance to resolve one person or organization from partial public identifiers.
+    entity_type is Organization or Person. Provide name, url, or for a person an employer.
+    employer and title are valid only for Person. Email, phone, and IP are intentionally not accepted.
+    size is 1 to 3. The response includes the match score and a trimmed entity record.
+    This does not refresh or recrawl origins.
+parameters:
+  - name: entity_type
+    type: select
+    required: true
+    form: llm
+    label:
+      en_US: Entity type
+    human_description:
+      en_US: Whether to match an organization or a person.
+    llm_description: Organization or Person.
+    options:
+      - value: Organization
+        label:
+          en_US: Organization
+      - value: Person
+        label:
+          en_US: Person
+  - name: name
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Name
+    human_description:
+      en_US: Name of the organization or person.
+    llm_description: Entity name. More specific names match better.
+  - name: url
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: URL
+    human_description:
+      en_US: Public homepage or profile URL. Local and private hosts are rejected.
+    llm_description: Public http(s) homepage or profile URL.
+  - name: location
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Location
+    human_description:
+      en_US: Optional city, region, or country that disambiguates the name.
+    llm_description: Free-text location used only to disambiguate the match.
+  - name: employer
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Employer
+    human_description:
+      en_US: Employer name. Only for a person.
+    llm_description: Employer name. Valid only when entity_type is Person.
+  - name: title
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Title
+    human_description:
+      en_US: Job title. Only for a person, and only together with a name, URL, or employer.
+    llm_description: Job title. Valid only when entity_type is Person. Not sufficient on its own.
+  - name: size
+    type: number
+    required: false
+    form: llm
+    default: 1
+    min: 1
+    max: 3
+    label:
+      en_US: Maximum matches
+    human_description:
+      en_US: How many candidate matches to return, from 1 to 3. Defaults to 1.
+    llm_description: Match cap from 1 to 3. Default 1. Each extra match can spend more credits.
+extra:
+  python:
+    source: tools/enhance_entity.py

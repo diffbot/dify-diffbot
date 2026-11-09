@@ -1,0 +1,134 @@
+identity:
+  name: search_organizations
+  author: diffbot
+  label:
+    en_US: Search organizations
+description:
+  human:
+    en_US: Find companies and other organizations in the Diffbot Knowledge Graph by name, homepage, industry category, headquarters, headcount, revenue, or public-company status.
+  llm: >
+    Search Diffbot Knowledge Graph organizations. Use this for firmographic facts, not for general web search.
+    Industry must match a Knowledge Graph category name such as "Software Companies"; free text often misses.
+    Revenue values are the raw revenue.value numbers, typically US dollars, not strings like 10M.
+    At least one filter is required. Results omit employee rosters and contact details.
+parameters:
+  - name: name
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Name
+    human_description:
+      en_US: Organization name to match, for example Diffbot.
+    llm_description: Organization name. Quoted exact match against the name field.
+  - name: homepage
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Homepage
+    human_description:
+      en_US: Homepage URI or domain stored on the organization record.
+    llm_description: homepageUri value, either a full URI or a domain. Do not invent a URL. Use the value the user supplied.
+  - name: industry
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Industry category
+    human_description:
+      en_US: Knowledge Graph category name. Free text that is not an exact category often returns nothing.
+    llm_description: Exact categories.name value, for example Software Companies. This v1 tool does not resolve free text to the taxonomy.
+  - name: city
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Headquarters city
+    human_description:
+      en_US: Headquarters city name.
+    llm_description: location.city.name of the headquarters.
+  - name: country
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Headquarters country
+    human_description:
+      en_US: Headquarters country name, for example United States.
+    llm_description: location.country.name of the headquarters.
+  - name: min_employees
+    type: number
+    required: false
+    form: llm
+    min: 0
+    label:
+      en_US: Minimum employees
+    human_description:
+      en_US: Minimum employee count, inclusive.
+    llm_description: Inclusive minimum nbEmployees. Whole number.
+  - name: max_employees
+    type: number
+    required: false
+    form: llm
+    min: 0
+    label:
+      en_US: Maximum employees
+    human_description:
+      en_US: Maximum employee count, inclusive.
+    llm_description: Inclusive maximum nbEmployees. Whole number.
+  - name: min_revenue
+    type: number
+    required: false
+    form: llm
+    min: 0
+    label:
+      en_US: Minimum revenue
+    human_description:
+      en_US: Inclusive minimum of revenue.value. Use a plain number such as 10000000, not 10M.
+    llm_description: Inclusive minimum revenue.value as a number.
+  - name: max_revenue
+    type: number
+    required: false
+    form: llm
+    min: 0
+    label:
+      en_US: Maximum revenue
+    human_description:
+      en_US: Inclusive maximum of revenue.value, as a plain number.
+    llm_description: Inclusive maximum revenue.value as a number.
+  - name: is_public
+    type: select
+    required: false
+    form: llm
+    default: any
+    label:
+      en_US: Public company
+    human_description:
+      en_US: Limit to publicly traded companies, private companies, or either.
+    llm_description: any, true for isPublic, or false.
+    options:
+      - value: any
+        label:
+          en_US: Any
+      - value: "true"
+        label:
+          en_US: Public
+      - value: "false"
+        label:
+          en_US: Not public
+  - name: size
+    type: number
+    required: false
+    form: llm
+    default: 5
+    min: 1
+    max: 10
+    label:
+      en_US: Maximum results
+    human_description:
+      en_US: How many organizations to return, from 1 to 10.
+    llm_description: Result cap from 1 to 10. Default 5.
+extra:
+  python:
+    source: tools/search_organizations.py

@@ -1,0 +1,40 @@
+version: 0.1.0
+type: plugin
+author: diffbot
+name: diffbot
+label:
+  en_US: Diffbot
+description:
+  en_US: Search the web, extract pages, and look up organizations, people, and news in the Diffbot Knowledge Graph.
+icon: icon.svg
+created_at: "2026-11-09T21:43:00Z"
+resource:
+  memory: 67108864
+  permission:
+    tool:
+      enabled: true
+plugins:
+  tools:
+    - provider/diffbot.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+privacy: PRIVACY.md
+repo: https://github.com/diffbot/dify-diffbot
+contact: privacy@diffbot.com
+network:
+  domains:
+    - api.diffbot.com
+    - kg.diffbot.com
+    - llm.diffbot.com
+    - nl.diffbot.com
+tags:
+  - search
+  - news
+  - business

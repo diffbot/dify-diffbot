@@ -1,0 +1,36 @@
+identity:
+  name: resolve_entities
+  author: diffbot
+  label:
+    en_US: Resolve entities
+description:
+  human:
+    en_US: Find organizations, people, places, and products mentioned in a passage and link them to Diffbot Knowledge Graph ids.
+  llm: >
+    Run Diffbot natural language entity recognition on plain text.
+    Returns each mention's name, types, confidence, salience, sentiment, and Knowledge Graph id when linked.
+    Also returns dql_filter, an id:or(...) clause. This v1 plugin does not execute that clause;
+    use Search organizations, Search people, or a later raw DQL tool with the ids.
+    Maximum 20000 characters. Do not send secrets, credentials, or private messages.
+parameters:
+  - name: text
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Text
+    human_description:
+      en_US: Plain text to scan for named entities. Maximum 20000 characters.
+    llm_description: Plain text to analyze. Do not include secrets. Maximum 20000 characters.
+  - name: lang
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Language
+    human_description:
+      en_US: Language of the text. Leave empty for auto, or pass a code such as en.
+    llm_description: auto, or a 2- or 3-letter ISO code. Default auto.
+extra:
+  python:
+    source: tools/resolve_entities.py

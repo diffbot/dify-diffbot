@@ -1,0 +1,81 @@
+identity:
+  name: extract
+  author: diffbot
+  label:
+    en_US: Extract page
+description:
+  human:
+    en_US: Fetch a public page through Diffbot and return its main content. Auto mode classifies the page. Article mode is the usual choice for news and blog posts.
+  llm: >
+    Fetch one public http(s) URL through Diffbot Extract and return the main content.
+    Use page_type auto unless the page type is already known. article is for news and blog posts.
+    format markdown returns readable text; json returns the same extraction without the LLM markdown mode.
+    Do not use this for private, localhost, or non-http URLs. Prefer Web search with a url: query
+    when the indexed copy is enough and a live fetch is unnecessary.
+parameters:
+  - name: url
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Page URL
+    human_description:
+      en_US: Public http or https URL. Local and private hosts are rejected.
+    llm_description: Absolute public http or https URL of the page to extract.
+    placeholder:
+      en_US: https://example.com/story
+  - name: page_type
+    type: select
+    required: false
+    form: llm
+    default: auto
+    label:
+      en_US: Page type
+    human_description:
+      en_US: Leave on auto to let Diffbot classify the page, or force a type such as article.
+    llm_description: auto classifies the page. Set article for a news story or blog post when auto is not specific enough.
+    options:
+      - value: auto
+        label:
+          en_US: Auto
+      - value: article
+        label:
+          en_US: Article
+      - value: product
+        label:
+          en_US: Product
+      - value: discussion
+        label:
+          en_US: Discussion
+      - value: image
+        label:
+          en_US: Image
+      - value: video
+        label:
+          en_US: Video
+      - value: list
+        label:
+          en_US: List
+      - value: event
+        label:
+          en_US: Event
+  - name: format
+    type: select
+    required: false
+    form: llm
+    default: markdown
+    label:
+      en_US: Format
+    human_description:
+      en_US: Markdown asks Diffbot for LLM-oriented text. JSON returns the typed extraction fields.
+    llm_description: markdown uses Diffbot mode=llm. json returns the extraction objects without that mode.
+    options:
+      - value: markdown
+        label:
+          en_US: Markdown
+      - value: json
+        label:
+          en_US: JSON
+extra:
+  python:
+    source: tools/extract.py

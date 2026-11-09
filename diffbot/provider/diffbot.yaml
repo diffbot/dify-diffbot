@@ -1,0 +1,34 @@
+identity:
+  author: diffbot
+  name: diffbot
+  label:
+    en_US: Diffbot
+  description:
+    en_US: Search the web, extract a page into structured text, and look up organizations, people, and news in the Diffbot Knowledge Graph.
+  icon: icon.svg
+  tags:
+    - search
+    - news
+    - business
+credentials_for_provider:
+  diffbot_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Diffbot token
+    placeholder:
+      en_US: Paste the token from your Diffbot dashboard
+    help:
+      en_US: A free token is available at app.diffbot.com/get-started. Dify stores it as a secret and the plugin sends it only to Diffbot.
+    url: https://app.diffbot.com/get-started
+tools:
+  - tools/search_web.yaml
+  - tools/extract.yaml
+  - tools/search_organizations.yaml
+  - tools/search_people.yaml
+  - tools/search_news.yaml
+  - tools/enhance_entity.yaml
+  - tools/resolve_entities.yaml
+extra:
+  python:
+    source: provider/diffbot.py
