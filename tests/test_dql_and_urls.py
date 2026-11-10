@@ -46,8 +46,14 @@ def test_organization_query_includes_numeric_filters():
 def test_people_query_uses_employment_fields():
     query = build_people_query({"name": "Ada Lovelace", "employer": "Analytical Engines", "title": "Engineer"})
     assert query.startswith("type:Person ")
-    assert 'employments.employer.name:"Analytical Engines"' in query
-    assert 'employments.title:"Engineer"' in query
+    assert 'employments.{employer.name:"Analytical Engines" title:"Engineer"}' in query
+
+
+def test_people_query_single_employment_field_is_not_grouped():
+    assert build_people_query({"employer": "Analytical Engines"}) == (
+        'type:Person employments.employer.name:"Analytical Engines"'
+    )
+    assert build_people_query({"title": "Engineer"}) == 'type:Person employments.title:"Engineer"'
 
 
 def test_news_query_sorts_descending_and_or_combines_mentions():

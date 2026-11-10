@@ -142,10 +142,23 @@ def build_people_query(parameters: dict) -> str:
     clauses = ["type:Person"]
     if parameters.get("name"):
         clauses.append(clause("name", parameters["name"], label="name"))
-    if parameters.get("employer"):
-        clauses.append(clause("employments.employer.name", parameters["employer"], label="employer"))
-    if parameters.get("title"):
-        clauses.append(clause("employments.title", parameters["title"], label="title"))
+    employer = parameters.get("employer")
+    title = parameters.get("title")
+    if employer and title:
+        # Group both conditions so they must hold on the same employment
+        # record. Separate clauses match a title at one employer and the
+        # employer name anywhere else in the person's history.
+        clauses.append(
+            "employments.{"
+            + clause("employer.name", employer, label="employer")
+            + " "
+            + clause("title", title, label="title")
+            + "}"
+        )
+    elif employer:
+        clauses.append(clause("employments.employer.name", employer, label="employer"))
+    elif title:
+        clauses.append(clause("employments.title", title, label="title"))
     if parameters.get("city"):
         clauses.append(clause("location.city.name", parameters["city"], label="city"))
     if parameters.get("country"):

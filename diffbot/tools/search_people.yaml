@@ -38,8 +38,8 @@ parameters:
     label:
       en_US: Title
     human_description:
-      en_US: Job title, for example Chief Executive Officer. Abbreviations are not expanded in this version.
-    llm_description: employments.title value. Pass the full title; abbreviations are not expanded.
+      en_US: Job title as written on profiles, for example CEO or Chief Executive Officer. Abbreviations are not expanded, so try both forms.
+    llm_description: employments.title value, matched against the title text on the profile. Abbreviations are not expanded; if CEO returns nothing, retry with Chief Executive Officer, and the reverse.
   - name: city
     type: string
     required: false
