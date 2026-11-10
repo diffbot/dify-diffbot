@@ -1,10 +1,14 @@
 # Diffbot plugin for Dify
 
-Prototype of a Dify tool plugin that calls Diffbot. Nothing in this repository has been submitted to the Dify Marketplace, and no pull request was opened against `langgenius/dify-plugins`.
+A [Dify](https://dify.ai/) tool plugin that brings Diffbot web search, page extraction, and Knowledge Graph lookups into Dify agents and workflows.
 
-The installable plugin is `diffbot/`. Marketplace steps, review expectations, and open questions are in [SUBMISSION.md](SUBMISSION.md).
+The installable plugin is in [`diffbot/`](diffbot/). Its [README](diffbot/README.md) covers setup, credentials, and each tool, and [PRIVACY.md](diffbot/PRIVACY.md) is the plugin privacy policy. Marketplace publishing steps are in [SUBMISSION.md](SUBMISSION.md).
 
-## What v1 implements
+- Source: https://github.com/diffbot/dify-diffbot
+- Support: support@diffbot.com
+- License: [MIT](LICENSE)
+
+## Tools
 
 | Tool | Diffbot API |
 | --- | --- |
@@ -16,9 +20,9 @@ The installable plugin is `diffbot/`. Marketplace steps, review expectations, an
 | Enhance entity | `GET https://kg.diffbot.com/kg/v3/enhance` |
 | Resolve entities | `POST https://nl.diffbot.com/v1/` |
 
-Credential save checks `GET https://api.diffbot.com/v4/account?days=1`. There is no live token in this environment, so tests mock HTTP and do not show live Diffbot results.
+Saving the credential checks `GET https://api.diffbot.com/v4/account?days=1`. Get a free token at [app.diffbot.com/get-started](https://app.diffbot.com/get-started).
 
-Crawl, raw DQL, ontology lookup, places, and deals are left out of v1. See SUBMISSION.md for why.
+Crawl, raw DQL, ontology lookup, places, and deals are not in v0.1. See SUBMISSION.md for why.
 
 ## Run the tests
 
@@ -29,17 +33,17 @@ pip install -r diffbot/requirements.txt pytest
 pytest
 ```
 
-`diffbot/requirements.txt` pins `dify_plugin==0.11.0` and `requests==2.34.2`, which is the set these tests ran against.
+The tests mock HTTP and make no Diffbot calls. `diffbot/requirements.txt` pins `dify_plugin==0.11.0` and `requests==2.34.2`.
 
 ## Package
 
-Install the Dify plugin CLI from the [0.6.15 release](https://github.com/langgenius/dify-plugin-daemon/releases/tag/0.6.15) (`dify-plugin-linux-amd64` was used here) and from the repository root:
+Install the Dify plugin CLI from the [0.6.15 release](https://github.com/langgenius/dify-plugin-daemon/releases/tag/0.6.15) and run from the repository root:
 
 ```bash
 dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
 dify plugin checksum dist/diffbot-0.1.0.difypkg
 ```
 
-The unsigned package checked into `dist/` matches the last local build. Self-hosted Dify rejects unsigned local installs unless an administrator trusts a signature or changes verification. Signing commands are in `diffbot/README.md`. Do not commit the private key.
+`dist/` is ignored by git. The package is unsigned; Dify signs marketplace builds after review. Self-hosted Dify rejects unsigned local installs unless an administrator trusts a signature or turns off verification. Signing commands are in `diffbot/README.md`. Never commit a private key.
 
-Marketplace validation, separate from `dify plugin package`, is `langgenius/dify-marketplace-toolkit` `validator/validate-difypkg.py`. The last run of that validator is recorded in SUBMISSION.md.
+Marketplace validation is `validator/validate-difypkg.py` from [langgenius/dify-marketplace-toolkit](https://github.com/langgenius/dify-marketplace-toolkit). The last result is recorded in SUBMISSION.md.

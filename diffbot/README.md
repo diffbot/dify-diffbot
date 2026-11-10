@@ -4,7 +4,7 @@ Search the public web and the Diffbot Knowledge Graph from a Dify agent or workf
 
 Diffbot structures pages and keeps a knowledge graph of organizations, people, and articles. This plugin exposes a small v1 of that API: web search, page extraction, organization and people lookup, news search, entity enhancement, and named-entity resolution. A free token from [app.diffbot.com/get-started](https://app.diffbot.com/get-started) is enough to authenticate.
 
-This directory is a prototype. It is not an official Diffbot release until Diffbot publishes it. The icon in `_assets/icon.png` is the Diffbot robot mark.
+Published by Diffbot. Source: https://github.com/diffbot/dify-diffbot. Support: support@diffbot.com.
 
 ## Tools
 
@@ -67,15 +67,11 @@ Outbound HTTPS to:
 
 No database, filesystem, or browser is required. The plugin does not call any host other than those four.
 
-## Source repository
+## Source repository and support
 
-Source repository: https://github.com/diffbot/dify-diffbot
-
-That URL is the intended public source for marketplace review. It was not a public repository on 9 November 2026. Diffbot needs to create it, push this plugin, and keep `manifest.yaml` `repo` pointed at it. Until then, reviewers cannot inspect the source from that link.
-
-Support contact: privacy@diffbot.com
-
-That address is the privacy contact published in Diffbot's privacy policy. Marketplace review mail should go to an inbox Diffbot actually monitors. Replace `contact` in `manifest.yaml` if a different developer-relations address should receive it.
+- Source repository: https://github.com/diffbot/dify-diffbot
+- Issues: https://github.com/diffbot/dify-diffbot/issues
+- Support contact: support@diffbot.com
 
 ## Privacy
 

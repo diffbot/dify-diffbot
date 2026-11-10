@@ -25,9 +25,10 @@ meta:
     language: python
     version: "3.12"
     entrypoint: main
+  minimum_dify_version: "1.14.0"
 privacy: PRIVACY.md
 repo: https://github.com/diffbot/dify-diffbot
-contact: privacy@diffbot.com
+contact: support@diffbot.com
 network:
   domains:
     - api.diffbot.com
