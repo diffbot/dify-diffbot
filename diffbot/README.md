@@ -38,7 +38,7 @@ Extract accepts only `http` and `https` URLs. Localhost, link-local, and private
 
 ## Install the package locally
 
-From the repository root, with the [Dify plugin CLI](https://github.com/langgenius/dify-plugin-daemon/releases) installed:
+From the repository root, with the [Dify plugin CLI](https://github.com/langgenius/dify-plugin-daemon) installed:
 
 ```bash
 dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg

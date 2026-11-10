@@ -37,7 +37,7 @@ The tests mock HTTP and make no Diffbot calls. `diffbot/requirements.txt` pins `
 
 ## Package
 
-Install the Dify plugin CLI from the [0.6.15 release](https://github.com/langgenius/dify-plugin-daemon/releases/tag/0.6.15) and run from the repository root:
+Install the Dify plugin CLI from [langgenius/dify-plugin-daemon](https://github.com/langgenius/dify-plugin-daemon) and run from the repository root:
 
 ```bash
 dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
