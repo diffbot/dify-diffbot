@@ -4,7 +4,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .env
-dist/*.signed.difypkg
+dist/
 *.private.pem
 *.public.pem
 agent-tools/
