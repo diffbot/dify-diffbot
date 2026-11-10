@@ -5,7 +5,7 @@ identity:
     en_US: Diffbot
   description:
     en_US: Search the web, extract a page into structured text, and look up organizations, people, and news in the Diffbot Knowledge Graph.
-  icon: icon.svg
+  icon: icon.png
   tags:
     - search
     - news

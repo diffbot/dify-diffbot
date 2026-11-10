@@ -4,7 +4,7 @@ Search the public web and the Diffbot Knowledge Graph from a Dify agent or workf
 
 Diffbot structures pages and keeps a knowledge graph of organizations, people, and articles. This plugin exposes a small v1 of that API: web search, page extraction, organization and people lookup, news search, entity enhancement, and named-entity resolution. A free token from [app.diffbot.com/get-started](https://app.diffbot.com/get-started) is enough to authenticate.
 
-This directory is a prototype. It is not an official Diffbot release until Diffbot publishes it. The icon in `_assets/icon.svg` is a placeholder monogram. Swap in the real Diffbot icon, which Diffbot must have rights to use, before a marketplace submission.
+This directory is a prototype. It is not an official Diffbot release until Diffbot publishes it. The icon in `_assets/icon.png` is the Diffbot robot mark.
 
 ## Tools
 
