@@ -264,7 +264,8 @@ def test_news_search_passes_the_built_query(session_factory):
     tool = SearchNewsTool.from_credentials({"diffbot_token": TOKEN})
     payload = _json_message(list(tool.invoke({"title": "Launch", "include_text": False})))
     assert 'title:"Launch"' in seen["query"]
-    assert seen["query"].endswith("revSortBy:date")
+    assert seen["query"].endswith(" sortBy:date")
+    assert "revSortBy" not in seen["query"]
     assert payload["results"][0]["date"] == "d2024-05-01"
     assert "html" not in payload["results"][0]
     assert "text" not in payload["results"][0]

@@ -187,8 +187,8 @@ def build_news_query(parameters: dict) -> str:
         raise DiffbotError(
             "Search news needs a mention, title, text, publisher, or date. An unfiltered article query is too broad."
         )
-    # revSortBy is descending. Article publication dates increase with time,
-    # so this asks for newest first. diffbot-mcp currently appends sortBy:date
-    # while describing the same newest-first intent; confirm with a live token.
-    clauses.append("revSortBy:date")
+    # sortBy:date returns the newest publication date first. Checked live on
+    # 10 November 2026: sortBy:date led with same-day articles, while
+    # revSortBy:date led with the oldest dates allowed by the filter.
+    clauses.append("sortBy:date")
     return " ".join(clauses)

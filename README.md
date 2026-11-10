@@ -12,7 +12,7 @@ The installable plugin is `diffbot/`. Marketplace steps, review expectations, an
 | Extract page | `GET https://api.diffbot.com/v3/{analyze\|article\|product\|discussion\|image\|video\|list\|event}` (`token` query parameter) |
 | Search organizations | `GET https://kg.diffbot.com/kg/v3/dql` |
 | Search people | same DQL endpoint, public professional profiles only |
-| Search news | same DQL endpoint, newest publication date first via `revSortBy:date` |
+| Search news | same DQL endpoint, newest publication date first via `sortBy:date` |
 | Enhance entity | `GET https://kg.diffbot.com/kg/v3/enhance` |
 | Resolve entities | `POST https://nl.diffbot.com/v1/` |
 

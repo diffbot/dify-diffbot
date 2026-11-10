@@ -10,7 +10,7 @@ description:
     Search Diffbot Knowledge Graph articles. Prefer this for news about a named entity.
     mentions matches tags.label (entity names as Diffbot tagged them). If that returns nothing,
     retry the same words in text. At least one of mentions, text, title, publisher, since, or until
-    is required. Results are ordered with revSortBy:date (newest publication date first) and omit
+    is required. Results are ordered with sortBy:date (newest publication date first) and omit
     full article HTML. Set include_text only when a short excerpt of the body is needed.
 parameters:
   - name: mentions

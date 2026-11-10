@@ -64,7 +64,8 @@ def test_news_query_sorts_descending_and_or_combines_mentions():
     assert '"Diffbot"' in query and '"OpenAI"' in query
     assert 'language:"en"' in query
     assert 'date>="2024-01-01"' in query
-    assert query.endswith("revSortBy:date")
+    assert query.endswith(" sortBy:date")
+    assert "revSortBy" not in query
 
 
 def test_news_rejects_language_only():
