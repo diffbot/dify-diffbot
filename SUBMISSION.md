@@ -22,7 +22,7 @@ Done:
 - Publisher: `author` in `manifest.yaml` and `provider/diffbot.yaml` is `diffbot`, matching the `diffbot` GitHub organization. The Marketplace docs say this has to match the GitHub handle that owns the listing.
 - Public source: https://github.com/diffbot/dify-diffbot, linked from `manifest.yaml` `repo` and the plugin README.
 - Contact: `support@diffbot.com` in `manifest.yaml`, the plugin README, PRIVACY.md, and the PR body.
-- Icon: `_assets/icon.png` is the Diffbot robot logo (512x512 PNG).
+- Icon: `_assets/icon.png` is the official 2026 Diffbot logomark, the green rounded-square tile (512×512 PNG).
 - `meta.minimum_dify_version`: 1.14.0. The dify_plugin 0.11.0 README lists Dify 1.14.0 for SDK 0.8.1 and later. The plugin uses no later gated feature (OAuth, dynamic-select, multiple selects, reset_on_change).
 - Live API check: every tool was called against the real Diffbot API on 10 November 2026. Results are below.
 
@@ -170,7 +170,7 @@ Live smoke test against the Diffbot API on 10 November 2026, calling each tool c
 - `meta.minimum_dify_version` is 1.14.0, from the dify_plugin 0.11.0 compatibility table (SDK 0.8.1 and later). The plugin uses no later gated feature.
 - Industry filter on organization search is an exact `categories.name`. Free text is not resolved through the ontology in this version.
 - Job titles match profile text as written. `CEO` and `Chief Executive Officer` may return different people; the tool description tells the model to try both.
-- The icon is Diffbot's own logo, published by Diffbot.
+- The icon is Diffbot's own 2026 logomark, published by Diffbot.
 ````
 
 Leave the "tested on Community Edition and Dify Cloud" box unchecked until that test exists. Do not check a box the package does not meet. Explain the gap under reviewer notes instead.
