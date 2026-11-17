@@ -1,26 +1,14 @@
-"""HTTP client for the Diffbot APIs used by this plugin.
+"""Plugin policy shared by every tool: token format, URL/host guard, safe errors.
 
-Authentication is a Diffbot token. Extract, Knowledge Graph, Enhance, Account,
-and Natural Language calls send it as the ``token`` query parameter. Web Search
-on ``llm.diffbot.com`` uses ``Authorization: Bearer`` instead, which is what
-the current Web Search reference documents.
+HTTP itself is done by the Diffbot Python SDK (see ``tools/sdk.py``); this module
+holds only the rules the plugin enforces on top of it.
 """
 
 from __future__ import annotations
 
 import ipaddress
 import re
-from typing import Any
 from urllib.parse import urlparse
-
-import requests
-
-ACCOUNT_URL = "https://api.diffbot.com/v4/account"
-EXTRACT_BASE = "https://api.diffbot.com/v3"
-WEB_SEARCH_URL = "https://llm.diffbot.com/api/v1/web_search"
-DQL_URL = "https://kg.diffbot.com/kg/v3/dql"
-ENHANCE_URL = "https://kg.diffbot.com/kg/v3/enhance"
-NLP_URL = "https://nl.diffbot.com/v1/"
 
 TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._~+\-]{16,256}$")
 BLOCKED_HOST_SUFFIXES = (".local", ".localhost", ".internal")
@@ -31,186 +19,16 @@ BLOCKED_HOSTS = {
     "metadata.google",
 }
 
-TIMEOUTS = {
-    "account": 15,
-    "search": 30,
-    "extract": 45,
-    "dql": 30,
-    "enhance": 30,
-    "nlp": 30,
-}
-
 
 class DiffbotError(Exception):
     """A safe, user-facing Diffbot failure. Messages never include the token."""
 
 
-class DiffbotClient:
-    def __init__(self, token: str, session: requests.Session | None = None) -> None:
-        self.token = normalize_token(token)
-        self.session = session or requests.Session()
-
-    def validate_token(self) -> None:
-        """Confirm the token with the Account API without returning account details.
-
-        ``days=1`` keeps the usage history small. The response body contains the
-        token itself, so this method returns nothing and callers must not log it.
-        """
-        data = self._request_json(
-            "GET",
-            ACCOUNT_URL,
-            params={"token": self.token, "days": 1},
-            timeout=TIMEOUTS["account"],
-        )
-        if not isinstance(data, dict):
-            raise DiffbotError("Diffbot account check returned an unexpected response.")
-        if not any(key in data for key in ("plan", "status", "email", "name")):
-            raise DiffbotError("Diffbot account check did not return account details.")
-
-    def web_search(
-        self,
-        query: str,
-        *,
-        num_results: int,
-        snippet_length: str,
-        max_tokens: int | None,
-        rerank: str | None,
-    ) -> dict[str, Any]:
-        params: dict[str, Any] = {
-            "text": query,
-            "size": num_results,
-            "snippetLength": snippet_length.upper(),
-        }
-        if max_tokens is not None:
-            params["maxTokens"] = max_tokens
-        if rerank:
-            params["rerank"] = rerank
-        data = self._request_json(
-            "GET",
-            WEB_SEARCH_URL,
-            params=params,
-            headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"},
-            timeout=TIMEOUTS["search"],
-        )
-        if not isinstance(data, dict):
-            raise DiffbotError("Diffbot web search returned an unexpected response.")
-        return data
-
-    def extract(self, url: str, *, page_type: str, markdown: bool) -> dict[str, Any]:
-        endpoint = "analyze" if page_type == "auto" else page_type
-        params: dict[str, Any] = {
-            "token": self.token,
-            "url": url,
-            "timeout": 30000,
-        }
-        if markdown:
-            params["mode"] = "llm"
-        data = self._request_json(
-            "GET",
-            f"{EXTRACT_BASE}/{endpoint}",
-            params=params,
-            timeout=TIMEOUTS["extract"],
-        )
-        if not isinstance(data, dict):
-            raise DiffbotError("Diffbot extract returned an unexpected response.")
-        return data
-
-    def dql(self, query: str, *, size: int) -> dict[str, Any]:
-        data = self._request_json(
-            "GET",
-            DQL_URL,
-            params={"token": self.token, "query": query, "size": size},
-            timeout=TIMEOUTS["dql"],
-        )
-        if not isinstance(data, dict):
-            raise DiffbotError("Diffbot Knowledge Graph search returned an unexpected response.")
-        return data
-
-    def enhance(self, params: dict[str, Any]) -> dict[str, Any]:
-        data = self._request_json(
-            "GET",
-            ENHANCE_URL,
-            params={"token": self.token, **params},
-            timeout=TIMEOUTS["enhance"],
-        )
-        if not isinstance(data, dict):
-            raise DiffbotError("Diffbot Enhance returned an unexpected response.")
-        return data
-
-    def resolve_entities(self, text: str, *, lang: str) -> dict[str, Any]:
-        data = self._request_json(
-            "POST",
-            NLP_URL,
-            params={"token": self.token, "fields": "entities,sentiment"},
-            json_body=[{"lang": lang, "format": "plain text", "content": text}],
-            timeout=TIMEOUTS["nlp"],
-        )
-        if isinstance(data, list):
-            data = data[0] if data else {}
-        if not isinstance(data, dict):
-            raise DiffbotError("Diffbot entity resolution returned an unexpected response.")
-        return data
-
-    def _request_json(
-        self,
-        method: str,
-        url: str,
-        *,
-        params: dict[str, Any] | None = None,
-        json_body: Any = None,
-        headers: dict[str, str] | None = None,
-        timeout: float,
-    ) -> Any:
-        try:
-            response = self.session.request(
-                method,
-                url,
-                params=params,
-                json=json_body,
-                headers=headers,
-                timeout=timeout,
-            )
-        except requests.Timeout as exc:
-            raise DiffbotError("The Diffbot request timed out.") from exc
-        except requests.RequestException as exc:
-            raise DiffbotError("The Diffbot request failed before a response was received.") from exc
-
-        if response.status_code in (401, 403):
-            raise DiffbotError("Invalid or unauthorized Diffbot token.")
-        if response.status_code == 429:
-            raise DiffbotError("Diffbot rate limit exceeded. Retry later.")
-        if response.status_code >= 400:
-            raise DiffbotError(
-                f"Diffbot API error {response.status_code}: {self._safe_body_message(response)}"
-            )
-
-        try:
-            data = response.json()
-        except ValueError as exc:
-            raise DiffbotError("Diffbot returned a non-JSON response.") from exc
-
-        if isinstance(data, dict) and data.get("errorCode"):
-            message = str(data.get("error") or data.get("message") or "request failed")
-            lowered = message.lower()
-            if "token" in lowered or "authorized" in lowered or "unauthor" in lowered:
-                raise DiffbotError("Invalid or unauthorized Diffbot token.")
-            raise DiffbotError(f"Diffbot request failed: {self._redact(message)}")
-        return data
-
-    def _safe_body_message(self, response: requests.Response) -> str:
-        try:
-            data = response.json()
-        except ValueError:
-            return "request failed"
-        if isinstance(data, dict):
-            message = str(data.get("error") or data.get("message") or "request failed")
-            return self._redact(message)[:300]
-        return "request failed"
-
-    def _redact(self, text: str) -> str:
-        if self.token and self.token in text:
-            text = text.replace(self.token, "[redacted]")
-        return text
+def redact(text: str, token: str | None) -> str:
+    """Remove the token (and any ``token=`` query value) from text."""
+    if token:
+        text = text.replace(token, "[redacted]")
+    return re.sub(r"(token=)[^&\s\"']+", r"\1[redacted]", text)
 
 
 def normalize_token(raw: str) -> str:
@@ -244,7 +62,13 @@ def validate_public_http_url(url: str) -> str:
         raise DiffbotError("URL must start with http:// or https://.")
     if parsed.username or parsed.password:
         raise DiffbotError("URL must not include a username or password.")
-    host = (parsed.hostname or "").rstrip(".").lower()
+    check_public_host(parsed.hostname or "")
+    return url
+
+
+def check_public_host(hostname: str) -> None:
+    """Reject empty, local-named, metadata, and private/loopback literal hosts."""
+    host = hostname.rstrip(".").lower()
     if not host:
         raise DiffbotError("URL must include a host.")
     if host in BLOCKED_HOSTS or host.endswith(BLOCKED_HOST_SUFFIXES):
@@ -252,8 +76,8 @@ def validate_public_http_url(url: str) -> str:
     try:
         ip = ipaddress.ip_address(host)
     except ValueError:
-        ip = None
-    if ip is not None and (
+        return
+    if (
         ip.is_private
         or ip.is_loopback
         or ip.is_link_local
@@ -262,4 +86,13 @@ def validate_public_http_url(url: str) -> str:
         or ip.is_unspecified
     ):
         raise DiffbotError("URL host is not allowed.")
-    return url
+
+
+def normalize_page_url(url: str) -> str:
+    """Prepend https:// to a bare domain (as the SDK does), then run the host guard."""
+    if not isinstance(url, str):
+        raise DiffbotError("A page URL is required.")
+    url = url.strip()
+    if url and "://" not in url:
+        url = f"https://{url}"
+    return validate_public_http_url(url)

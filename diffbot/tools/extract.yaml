@@ -20,7 +20,7 @@ parameters:
     label:
       en_US: Page URL
     human_description:
-      en_US: Public http or https URL. Local and private hosts are rejected.
+      en_US: Public http or https URL; a bare domain like example.com gets https://. Local and private hosts are rejected.
     llm_description: Absolute public http or https URL of the page to extract.
     placeholder:
       en_US: https://example.com/story
@@ -76,6 +76,191 @@ parameters:
       - value: json
         label:
           en_US: JSON
+  - name: fields
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Fields
+    human_description:
+      en_US: Comma-separated extra fields to return, for example links,meta,tags. Leave empty for the defaults.
+    llm_description: Optional comma-separated Diffbot extract fields, for example links,meta or sentiment.
+  - name: timeout
+    type: number
+    required: false
+    form: form
+    min: 1000
+    max: 250000
+    label:
+      en_US: Extraction timeout (ms)
+    human_description:
+      en_US: Milliseconds Diffbot may spend on the page. Default 30000.
+    llm_description: Leave empty.
+  - name: discussion
+    type: boolean
+    required: false
+    form: form
+    default: false
+    label:
+      en_US: Include discussion
+    human_description:
+      en_US: "Article/product: also extract comments and reviews."
+    llm_description: Leave unset.
+  - name: paging
+    type: boolean
+    required: false
+    form: form
+    default: false
+    label:
+      en_US: Follow pagination
+    human_description:
+      en_US: Stitch multi-page articles together.
+    llm_description: Leave unset.
+  - name: max_pages
+    type: number
+    required: false
+    form: form
+    min: 1
+    max: 100
+    label:
+      en_US: Max pages
+    human_description:
+      en_US: With pagination on, the most pages to follow (1-100).
+    llm_description: Leave empty.
+  - name: natural_language
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Natural language
+    human_description:
+      en_US: "Comma-separated natural-language fields to add (article): entities, sentiment, summary, facts, openFacts, records, categories, sentences, language."
+    llm_description: Leave empty.
+  - name: summary_num_sentences
+    type: number
+    required: false
+    form: form
+    min: 1
+    max: 20
+    label:
+      en_US: Summary sentences
+    human_description:
+      en_US: Sentences in the summary when natural language includes summary (1-20).
+    llm_description: Leave empty.
+  - name: max_tags
+    type: number
+    required: false
+    form: form
+    min: 1
+    max: 100
+    label:
+      en_US: Max tags
+    human_description:
+      en_US: Most tags to return per page (1-100).
+    llm_description: Leave empty.
+  - name: tag_confidence
+    type: number
+    required: false
+    form: form
+    min: 0
+    max: 1
+    label:
+      en_US: Tag confidence
+    human_description:
+      en_US: Minimum tag confidence, 0 to 1.
+    llm_description: Leave empty.
+  - name: category_confidence
+    type: number
+    required: false
+    form: form
+    min: 0
+    max: 1
+    label:
+      en_US: Category confidence
+    human_description:
+      en_US: Minimum category confidence, 0 to 1.
+    llm_description: Leave empty.
+  - name: mode
+    type: select
+    required: false
+    form: form
+    label:
+      en_US: Mode
+    human_description:
+      en_US: Restrict Analyze to one Extract API, or llm for markdown. Overrides the Markdown format's default (llm).
+    llm_description: Leave empty.
+    options:
+      - value: article
+        label:
+          en_US: article
+      - value: product
+        label:
+          en_US: product
+      - value: discussion
+        label:
+          en_US: discussion
+      - value: image
+        label:
+          en_US: image
+      - value: video
+        label:
+          en_US: video
+      - value: list
+        label:
+          en_US: list
+      - value: event
+        label:
+          en_US: event
+      - value: llm
+        label:
+          en_US: llm
+  - name: fallback
+    type: select
+    required: false
+    form: form
+    label:
+      en_US: Fallback page type
+    human_description:
+      en_US: API to use when Analyze classifies the page as other.
+    llm_description: Leave empty.
+    options:
+      - value: article
+        label:
+          en_US: article
+      - value: product
+        label:
+          en_US: product
+      - value: discussion
+        label:
+          en_US: discussion
+      - value: image
+        label:
+          en_US: image
+      - value: video
+        label:
+          en_US: video
+      - value: list
+        label:
+          en_US: list
+      - value: event
+        label:
+          en_US: event
+  - name: use_proxy
+    type: select
+    required: false
+    form: form
+    label:
+      en_US: Proxy
+    human_description:
+      en_US: Fetch through Diffbot's datacenter proxy (default) or explicitly none.
+    llm_description: Leave empty.
+    options:
+      - value: default
+        label:
+          en_US: default
+      - value: none
+        label:
+          en_US: none
 extra:
   python:
     source: tools/extract.py

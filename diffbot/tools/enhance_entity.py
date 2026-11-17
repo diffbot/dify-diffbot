@@ -7,7 +7,8 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
 from tools.client import DiffbotError, validate_public_http_url
-from tools.common import make_client, messages, optional_text, result_size
+from tools.common import make_client, mapped_errors, messages, optional_text, result_size
+from tools.sdk import enhance
 from tools.shape import summarize_lines, trim_enhance
 
 
@@ -43,7 +44,11 @@ class EnhanceEntityTool(Tool):
         if title:
             params["title"] = title
 
-        data = make_client(self.runtime.credentials).enhance(params)
+        # Enhance is not part of the Diffbot SDK; this goes through the SDK's transport
+        # (retries, timeouts, error mapping) via a plugin-side wrapper.
+        client = make_client(self.runtime.credentials)
+        with client, mapped_errors(client):
+            data = enhance(client, params)
         payload = trim_enhance(data, entity_type)
         lines = []
         for index, match in enumerate(payload["matches"], start=1):
