@@ -14,26 +14,35 @@ The installable plugin is in [`diffbot/`](diffbot/). Its [README](diffbot/README
 | --- | --- |
 | Web search | `GET https://llm.diffbot.com/api/v1/web_search` (bearer token) |
 | Extract page | `GET https://api.diffbot.com/v3/{analyze\|article\|product\|discussion\|image\|video\|list\|event}` (`token` query parameter) |
-| Search organizations | `GET https://kg.diffbot.com/kg/v3/dql` |
+| Search organizations | `POST https://kg.diffbot.com/kg/v3/dql` |
 | Search people | same DQL endpoint, public professional profiles only |
 | Search news | same DQL endpoint, newest publication date first via `sortBy:date` |
-| Enhance entity | `GET https://kg.diffbot.com/kg/v3/enhance` |
+| Start crawl | `GET https://api.diffbot.com/v3/crawl` (create only; returns a job name) |
+| Crawl jobs | list / status / results / **delete (destructive)** on `/v3/crawl` and `/v3/crawl/data` |
+| Enhance entity | `GET https://kg.diffbot.com/kg/v3/enhance` (plugin-side wrapper; not in the SDK) |
 | Resolve entities | `POST https://nl.diffbot.com/v1/` |
 
 Saving the credential checks `GET https://api.diffbot.com/v4/account?days=1`. Get a free token at [app.diffbot.com/get-started](https://app.diffbot.com/get-started).
 
-Crawl, raw DQL, ontology lookup, places, and deals are not in v0.1. See SUBMISSION.md for why.
+Raw DQL, ontology lookup, Ask, places, and deals are not in this version. See SUBMISSION.md for why.
+
+All HTTP goes through the [Diffbot Python SDK](https://github.com/diffbot/diffbot-python) (`diffbot.Diffbot`), behind a transport that refuses private, loopback, and cloud-metadata hosts.
 
 ## Run the tests
 
-Python 3.12:
+Python 3.12+:
 
 ```bash
-pip install -r diffbot/requirements.txt pytest
-pytest
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt   # dify_plugin, pytest, and the local SDK checkout
+pytest -q
 ```
 
-The tests mock HTTP and make no Diffbot calls. `diffbot/requirements.txt` pins `dify_plugin==0.11.0` and `requests==2.34.2`.
+The plugin imports the `diffbot` SDK, which is not released at the needed version yet (3.2.0, then 3.3.0). `diffbot/requirements.txt` therefore pins only `dify_plugin==0.11.0` and carries a TODO for the `diffbot` pin. `requirements-dev.txt` installs the local, unpushed SDK checkout editable (`-e /workspace/diffbot-python`); edit that path if your checkout lives elsewhere.
+
+The tests serve every request from `httpx.MockTransport` and make no Diffbot calls. The wiring tests run against the SDK as installed and against a copy with the 3.3.0 methods removed, which covers the plugin's `client.request()` fallbacks (`verify_token`, `crawl_download`, extract options).
+
+GitHub CI (`.github/workflows/test.yml`) cannot see the local path. Until `diffbot` is released it does not install the SDK, and `tests/conftest.py` skips the SDK-dependent modules (the DQL and URL-policy tests still run). The TODOs in both files say what to delete after release.
 
 ## Package
 

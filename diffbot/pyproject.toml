@@ -6,5 +6,5 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "dify_plugin==0.11.0",
-  "requests==2.34.2",
+  # TODO(release): add "diffbot==3.2.0", later "diffbot==3.3.0" (not published yet).
 ]

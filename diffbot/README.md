@@ -12,19 +12,22 @@ Published by Diffbot. Source: https://github.com/diffbot/dify-diffbot. Support: 
 | --- | --- | --- |
 | Web search | `GET https://llm.diffbot.com/api/v1/web_search` | Ranked pages with a score, URL, date, and passage. A query that is only `url:https://...` reads the indexed copy. |
 | Extract page | `GET https://api.diffbot.com/v3/analyze` or a typed extract path | Live extraction of one public page. `article` is the usual choice for news and blogs. |
-| Search organizations | `GET https://kg.diffbot.com/kg/v3/dql` | Companies by name, homepage, category, headquarters, headcount, revenue, or public status. |
+| Search organizations | `POST https://kg.diffbot.com/kg/v3/dql` | Companies by name, homepage, category, headquarters, headcount, revenue, or public status. |
 | Search people | same DQL endpoint | Public professional profiles by name, employer, title, or location. |
 | Search news | same DQL endpoint | Articles by mentioned entity, phrase, publisher, language, or date. |
+| Start crawl | `GET https://api.diffbot.com/v3/crawl` | Start a background crawl of public seed URLs. Returns a job name, never results. |
+| Crawl jobs | `/v3/crawl`, `/v3/crawl/data` | List jobs, check status, fetch results (up to 1000 rows, truncated), or delete a job. **Delete is destructive** and removes the job and its data. |
 | Enhance entity | `GET https://kg.diffbot.com/kg/v3/enhance` | Best Knowledge Graph match for a person or organization from a name, URL, or employer. |
 | Resolve entities | `POST https://nl.diffbot.com/v1/` | Names in a passage, linked to Knowledge Graph ids when Diffbot can match them. |
 
-Crawl, raw DQL, ontology lookup, places, and deals are not in this version. Industry filters must already be exact category names such as `Software Companies`. The plugin does not resolve free text onto the taxonomy.
+Raw DQL, ontology lookup, Ask, places, and deals are not in this version. Industry filters must already be exact category names such as `Software Companies`. The plugin does not resolve free text onto the taxonomy.
 
 ## Credentials
 
 1. Create a token at [app.diffbot.com/get-started](https://app.diffbot.com/get-started).
 2. In Dify, open Plugins, install this package, and choose Diffbot.
 3. Paste the token into **Diffbot token**.
+4. Optional: set **Request timeout** (5 to 300 seconds, default 30). **Block private hosts** stays on unless you run a self-hosted gateway.
 
 Dify stores the value as a secret. The plugin sends it only to the Diffbot hosts listed in `manifest.yaml`. Web Search uses `Authorization: Bearer`. The other calls use the `token` query parameter, which is how those APIs authenticate. Saving the credential calls `GET https://api.diffbot.com/v4/account` with `days=1` and does not show the account payload.
 
@@ -32,9 +35,9 @@ The token needs access to Extract, Web Search, Knowledge Graph, Enhance, and Nat
 
 ## Use the tools
 
-In an Agent, add the Diffbot tools and ask for a company, a news topic, or a URL. In a Workflow, add a tool node and pick one action. Required fields are marked on each tool. Limits are small on purpose: at most 10 search rows, 3 enhance matches, and 20,000 characters of text for entity resolution.
+In an Agent, add the Diffbot tools and ask for a company, a news topic, or a URL. In a Workflow, add a tool node and pick one action. Required fields are marked on each tool. Limits: up to 50 web results, 100 Knowledge Graph rows per call (page with Offset), 3 enhance matches, and 20,000 characters of text for entity resolution. Extract has optional caller-set options (fields, timeout, mode, paging, natural language, and others).
 
-Extract accepts only `http` and `https` URLs. Localhost, link-local, and private literal addresses are rejected before the request is sent.
+Extract accepts `http` and `https` URLs; a bare domain such as `example.com` gets `https://`. Localhost, link-local, and private literal addresses are rejected before the request is sent.
 
 ## Install the package locally
 

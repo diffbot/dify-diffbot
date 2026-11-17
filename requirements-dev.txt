@@ -1,0 +1,9 @@
+# Dev/test-only requirements. Not used for the production package.
+#
+# Installs the local, unreleased Diffbot Python SDK checkout (editable) so the
+# plugin can be exercised against it on this machine. GitHub CI cannot see this
+# path and does not use this file; CI stays on mocks until `diffbot` is released.
+# TODO: delete the -e line once diffbot>=3.3.0 is on PyPI and pinned in diffbot/requirements.txt.
+-r diffbot/requirements.txt
+pytest
+-e /workspace/diffbot-python
