@@ -6,7 +6,7 @@ from typing import Any
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
-from tools.common import make_client, messages, optional_text, result_size
+from tools.common import messages, optional_text, result_offset, result_size, run_dql
 from tools.dql_builder import build_people_query
 from tools.shape import summarize_lines, trim_kg
 
@@ -21,10 +21,9 @@ class SearchPeopleTool(Tool):
             "country": optional_text(tool_parameters, "country"),
         }
         query = build_people_query(parameters)
-        size = result_size(tool_parameters, default=5, maximum=10)
-        data = make_client(self.runtime.credentials).dql(query, size=size)
-        data["dql"] = query
-        payload = trim_kg(data, "person")
+        size = result_size(tool_parameters, default=5, maximum=100)
+        data = run_dql(self.runtime.credentials, query, size=size, offset=result_offset(tool_parameters))
+        payload = trim_kg(data, "person", limit=size)
         lines = []
         for index, row in enumerate(payload["results"], start=1):
             jobs = row.get("employments") or []

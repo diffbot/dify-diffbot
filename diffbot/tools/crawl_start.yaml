@@ -1,0 +1,148 @@
+identity:
+  name: crawl_start
+  author: diffbot
+  label:
+    en_US: Start crawl
+description:
+  human:
+    en_US: Start a Diffbot crawl of one or more sites. This returns a job name immediately; it does not wait for pages. Check progress and fetch results with the Crawl jobs tool.
+  llm: >
+    Start a Diffbot crawl job on public http(s) seed URLs. Returns a job_name only, never results,
+    because crawls run in the background. Afterwards call crawl_jobs with action status until the job
+    is done, then action results. Do not use for private or local hosts.
+parameters:
+  - name: seeds
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Seed URLs
+    human_description:
+      en_US: One or more public URLs to start from, separated by spaces. Bare domains get https://.
+    llm_description: Space-separated public http(s) URLs to crawl.
+  - name: job_name
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Job name
+    human_description:
+      en_US: Optional name (letters, digits, - _ .; 30 characters maximum). Defaults to crawl-<timestamp>.
+    llm_description: Optional job name, at most 30 characters (letters, digits, - _ .). Leave empty to auto-generate.
+  - name: max_to_crawl
+    type: number
+    required: false
+    form: form
+    default: 100
+    min: 1
+    max: 10000
+    label:
+      en_US: Max pages to crawl
+    human_description:
+      en_US: Most pages to fetch (1-10000).
+    llm_description: Most pages to fetch (1-10000).
+  - name: max_to_process
+    type: number
+    required: false
+    form: form
+    default: 100
+    min: 1
+    max: 10000
+    label:
+      en_US: Max pages to process
+    human_description:
+      en_US: Most pages to extract (1-10000).
+    llm_description: Most pages to extract (1-10000).
+  - name: hops
+    type: number
+    required: false
+    form: form
+    default: 2
+    min: 0
+    max: 10
+    label:
+      en_US: Link hops
+    human_description:
+      en_US: How many links deep to follow from the seeds (0-10).
+    llm_description: How many links deep to follow from the seeds (0-10).
+  - name: restrict_domain
+    type: boolean
+    required: false
+    form: form
+    default: true
+    label:
+      en_US: Stay on seed domains
+    human_description:
+      en_US: Only follow links on the seed domains.
+    llm_description: Only follow links on the seed domains.
+  - name: url_crawl_pattern
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: URL crawl pattern
+    human_description:
+      en_US: Only follow URLs containing one of these strings (Diffbot pattern syntax).
+    llm_description: Only follow URLs containing one of these strings (Diffbot pattern syntax).
+  - name: url_process_pattern
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: URL process pattern
+    human_description:
+      en_US: Only extract URLs containing one of these strings.
+    llm_description: Only extract URLs containing one of these strings.
+  - name: crawl_delay
+    type: number
+    required: false
+    form: form
+    default: -1
+    min: -1
+    max: 3600
+    label:
+      en_US: Crawl delay (s)
+    human_description:
+      en_US: Seconds between requests; -1 uses the Diffbot default.
+    llm_description: Seconds between requests; -1 uses the Diffbot default.
+  - name: obey_robots
+    type: boolean
+    required: false
+    form: form
+    default: false
+    label:
+      en_US: Obey robots.txt
+    human_description:
+      en_US: Respect robots.txt.
+    llm_description: Respect robots.txt.
+  - name: use_proxies
+    type: boolean
+    required: false
+    form: form
+    default: false
+    label:
+      en_US: Use proxies
+    human_description:
+      en_US: Route requests through Diffbot proxies.
+    llm_description: Route requests through Diffbot proxies.
+  - name: api_url
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Extraction API URL
+    human_description:
+      en_US: Optional Diffbot API URL to run on each page (public https only).
+    llm_description: Optional Diffbot API URL to run on each page (public https only).
+  - name: custom_headers
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Custom headers
+    human_description:
+      en_US: "Optional header to send with each request. Do not put secrets here: the crawler sends it to the sites."
+    llm_description: "Optional header to send with each request. Do not put secrets here: the crawler sends it to the sites."
+extra:
+  python:
+    source: tools/crawl_start.py

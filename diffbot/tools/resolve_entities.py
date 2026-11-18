@@ -7,7 +7,7 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
 from tools.client import DiffbotError
-from tools.common import make_client, messages, optional_text
+from tools.common import as_dict, make_client, mapped_errors, messages, optional_text
 from tools.dql_builder import validate_language
 from tools.shape import summarize_lines, trim_resolved_entities
 
@@ -23,7 +23,9 @@ class ResolveEntitiesTool(Tool):
         if lang != "auto":
             lang = validate_language(lang)
 
-        data = make_client(self.runtime.credentials).resolve_entities(text, lang=lang)
+        client = make_client(self.runtime.credentials)
+        with client, mapped_errors(client):
+            data = as_dict(client.entities(text, lang=lang), "entity resolution")
         payload = trim_resolved_entities(data)
         lines = []
         for entity in payload["entities"]:

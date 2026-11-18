@@ -1,0 +1,73 @@
+identity:
+  name: crawl_jobs
+  author: diffbot
+  label:
+    en_US: Crawl jobs
+description:
+  human:
+    en_US: "List Diffbot crawl jobs, check one's status, fetch its results, or delete it. Delete is destructive: it permanently removes the job and its collected data."
+  llm: >
+    Manage Diffbot crawl jobs. action list shows all jobs; status shows one job's progress;
+    results returns up to 1000 rows (truncated) of its output; delete PERMANENTLY removes the job and its data,
+    so only use delete when the user explicitly asks for it. job_name is required except for list.
+parameters:
+  - name: action
+    type: select
+    required: true
+    form: llm
+    default: list
+    label:
+      en_US: Action
+    human_description:
+      en_US: List, status, results, or delete. DELETE IS DESTRUCTIVE and permanently removes the job and its data.
+    llm_description: list, status, results, or delete (destructive, irreversible).
+    options:
+      - value: list
+        label:
+          en_US: List jobs
+      - value: status
+        label:
+          en_US: Status
+      - value: results
+        label:
+          en_US: Results
+      - value: delete
+        label:
+          en_US: Delete (destructive)
+  - name: job_name
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Job name
+    human_description:
+      en_US: Name of the crawl job. Required for status, results, and delete.
+    llm_description: Name of the crawl job. Required for status, results, and delete.
+  - name: result_type
+    type: select
+    required: false
+    form: llm
+    label:
+      en_US: Result type
+    human_description:
+      en_US: "Results only: extracted objects (default) or the crawled URL report."
+    llm_description: Leave empty for extracted objects, or urls for the URL report.
+    options:
+      - value: urls
+        label:
+          en_US: URL report
+  - name: limit
+    type: number
+    required: false
+    form: form
+    default: 100
+    min: 1
+    max: 1000
+    label:
+      en_US: Result limit
+    human_description:
+      en_US: "Results only: most rows to return (1-1000). Larger results are truncated."
+    llm_description: "Results only: most rows to return (1-1000). Larger results are truncated."
+extra:
+  python:
+    source: tools/crawl_jobs.py

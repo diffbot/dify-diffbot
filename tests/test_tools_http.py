@@ -2,12 +2,11 @@
 
 import json
 
+import httpx
 import pytest
-import requests
 
 from provider.diffbot import DiffbotProvider
 from tools.client import TOKEN_PATTERN, DiffbotError
-from tools.enhance_entity import EnhanceEntityTool
 from tools.extract import ExtractTool
 from tools.resolve_entities import ResolveEntitiesTool
 from tools.search_news import SearchNewsTool
@@ -20,38 +19,38 @@ assert TOKEN_PATTERN.fullmatch(TOKEN)
 
 
 class FakeResponse:
-    def __init__(self, status_code, payload):
+    """(status, payload) pair a responder returns; converted to an httpx.Response."""
+
+    def __init__(self, status_code, payload, headers=None):
         self.status_code = status_code
-        self._payload = payload
-        self.text = payload if isinstance(payload, str) else json.dumps(payload)
-
-    def json(self):
-        if isinstance(self._payload, str):
-            raise ValueError("not json")
-        return self._payload
-
-
-class FakeSession:
-    def __init__(self, responder):
-        self.responder = responder
-        self.calls = []
-
-    def request(self, method, url, **kwargs):
-        self.calls.append({"method": method, "url": url, **kwargs})
-        return self.responder(method, url, kwargs)
+        self.payload = payload
+        self.headers = headers or {}
 
 
 @pytest.fixture
 def session_factory(monkeypatch):
-    holder = {}
+    """Serve every SDK request from ``responder(method, url, kwargs)`` via httpx.MockTransport.
+
+    ``kwargs`` has ``params`` (query dict), ``headers`` and ``json`` (parsed body), so the
+    real SDK client and the plugin's host guard run; only the socket is replaced.
+    """
+    holder = {"calls": []}
 
     def install(responder):
-        def factory():
-            session = FakeSession(responder)
-            holder["session"] = session
-            return session
+        def handler(request: httpx.Request) -> httpx.Response:
+            kwargs = {
+                "params": dict(request.url.params),
+                "headers": dict(request.headers),
+                "json": json.loads(request.content) if request.content else None,
+            }
+            url = str(request.url.copy_with(query=None))
+            holder["calls"].append({"method": request.method, "url": url, **kwargs})
+            result = responder(request.method, url, kwargs)
+            if isinstance(result.payload, str):
+                return httpx.Response(result.status_code, text=result.payload, headers=result.headers)
+            return httpx.Response(result.status_code, json=result.payload, headers=result.headers)
 
-        monkeypatch.setattr("tools.client.requests.Session", factory)
+        monkeypatch.setattr("tools.sdk.httpx.HTTPTransport", lambda **_: httpx.MockTransport(handler))
         return holder
 
     return install
@@ -70,7 +69,7 @@ def _text(messages):
 def test_credential_validation_uses_account_api_and_hides_the_token(session_factory):
     def responder(method, url, kwargs):
         assert kwargs["params"]["token"] == TOKEN
-        assert kwargs["params"]["days"] == 1
+        assert kwargs["params"]["days"] == "1"
         return FakeResponse(200, {"plan": "FREE", "status": "active", "token": TOKEN, "email": "hidden@example.com"})
 
     session_factory(responder)
@@ -91,10 +90,10 @@ def test_credential_validation_rejects_unauthorized_without_echoing_the_token(se
 def test_web_search_uses_bearer_auth_and_not_the_query_token(session_factory):
     def responder(method, url, kwargs):
         assert url.endswith("/api/v1/web_search")
-        assert kwargs["headers"]["Authorization"] == f"Bearer {TOKEN}"
+        assert kwargs["headers"]["authorization"] == f"Bearer {TOKEN}"
         assert "token" not in (kwargs.get("params") or {})
         assert kwargs["params"]["text"] == "hypothyroidism"
-        assert kwargs["params"]["snippetLength"] == "SHORT"
+        assert "snippetLength" not in kwargs["params"]  # API default applies
         return FakeResponse(
             200,
             {
@@ -173,8 +172,8 @@ def test_extract_reports_api_error_without_the_token(session_factory):
 def test_organization_search_drops_unexpected_contact_fields(session_factory):
     def responder(method, url, kwargs):
         assert "kg.diffbot.com" in url
-        assert "type:Organization" in kwargs["params"]["query"]
-        assert 'name:"Diffbot"' in kwargs["params"]["query"]
+        assert "type:Organization" in kwargs["json"]["query"]
+        assert 'name:"Diffbot"' in kwargs["json"]["query"]
         return FakeResponse(
             200,
             {
@@ -208,7 +207,7 @@ def test_organization_search_drops_unexpected_contact_fields(session_factory):
 
 def test_people_search_keeps_employment_and_drops_email(session_factory):
     def responder(method, url, kwargs):
-        assert "type:Person" in kwargs["params"]["query"]
+        assert "type:Person" in kwargs["json"]["query"]
         return FakeResponse(
             200,
             {
@@ -241,7 +240,7 @@ def test_news_search_passes_the_built_query(session_factory):
     seen = {}
 
     def responder(method, url, kwargs):
-        seen["query"] = kwargs["params"]["query"]
+        seen["query"] = kwargs["json"]["query"]
         return FakeResponse(
             200,
             {
@@ -269,43 +268,6 @@ def test_news_search_passes_the_built_query(session_factory):
     assert payload["results"][0]["date"] == "d2024-05-01"
     assert "html" not in payload["results"][0]
     assert "text" not in payload["results"][0]
-
-
-def test_enhance_sends_partial_identifiers(session_factory):
-    def responder(method, url, kwargs):
-        assert kwargs["params"]["type"] == "Organization"
-        assert kwargs["params"]["name"] == "Diffbot"
-        assert "email" not in kwargs["params"]
-        return FakeResponse(
-            200,
-            {
-                "hits": 1,
-                "data": [
-                    {
-                        "score": 0.7,
-                        "entity": {
-                            "name": "Diffbot",
-                            "homepageUri": "https://www.diffbot.com",
-                            "diffbotUri": "http://diffbot.com/entity/org1",
-                            "allEmail": ["secret@example.com"],
-                        },
-                    }
-                ],
-            },
-        )
-
-    session_factory(responder)
-    tool = EnhanceEntityTool.from_credentials({"diffbot_token": TOKEN})
-    payload = _json_message(list(tool.invoke({"entity_type": "Organization", "name": "Diffbot"})))
-    assert payload["matches"][0]["score"] == 0.7
-    assert payload["matches"][0]["entity"]["id"] == "org1"
-    assert "secret@example.com" not in json.dumps(payload)
-
-
-def test_enhance_rejects_employer_for_an_organization():
-    tool = EnhanceEntityTool.from_credentials({"diffbot_token": TOKEN})
-    with pytest.raises(DiffbotError, match="employer"):
-        list(tool.invoke({"entity_type": "Organization", "name": "Diffbot", "employer": "Nobody"}))
 
 
 def test_resolve_entities_builds_a_dql_filter(session_factory):
@@ -345,7 +307,7 @@ def test_resolve_entities_builds_a_dql_filter(session_factory):
 
 def test_timeout_becomes_a_safe_error(session_factory):
     def responder(method, url, kwargs):
-        raise requests.Timeout("timed out with token " + TOKEN)
+        raise httpx.ReadTimeout("timed out with token " + TOKEN)
 
     session_factory(responder)
     tool = SearchWebTool.from_credentials({"diffbot_token": TOKEN})

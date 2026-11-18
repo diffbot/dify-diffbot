@@ -115,9 +115,9 @@ def trim_article(entity: dict[str, Any], *, include_text: bool) -> dict[str, Any
     return {key: value for key, value in record.items() if value not in (None, "", [], {})}
 
 
-def trim_kg(data: dict[str, Any], kind: str, *, include_text: bool = False) -> dict[str, Any]:
+def trim_kg(data: dict[str, Any], kind: str, *, include_text: bool = False, limit: int = 20) -> dict[str, Any]:
     rows = []
-    for item in (data.get("data") or [])[:20]:
+    for item in (data.get("data") or [])[:limit]:
         entity = item.get("entity") if isinstance(item, dict) and "entity" in item else item
         if not isinstance(entity, dict):
             continue
@@ -133,17 +133,6 @@ def trim_kg(data: dict[str, Any], kind: str, *, include_text: bool = False) -> d
         "returned": len(rows),
         "results": rows,
     }
-
-
-def trim_enhance(data: dict[str, Any], kind: str) -> dict[str, Any]:
-    matches = []
-    for item in (data.get("data") or [])[:5]:
-        if not isinstance(item, dict):
-            continue
-        entity = item.get("entity") if isinstance(item.get("entity"), dict) else {}
-        trimmed = trim_organization(entity) if kind == "Organization" else trim_person(entity)
-        matches.append({"score": item.get("score"), "entity": trimmed})
-    return {"hits": data.get("hits"), "matches": matches}
 
 
 def trim_extract(data: dict[str, Any]) -> dict[str, Any]:

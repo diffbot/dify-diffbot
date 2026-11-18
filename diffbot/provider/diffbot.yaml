@@ -21,13 +21,24 @@ credentials_for_provider:
     help:
       en_US: A free token is available at app.diffbot.com/get-started. Dify stores it as a secret and the plugin sends it only to Diffbot.
     url: https://app.diffbot.com/get-started
+  request_timeout:
+    type: text-input
+    required: false
+    default: "30"
+    label:
+      en_US: Request timeout (seconds)
+    placeholder:
+      en_US: "30"
+    help:
+      en_US: Seconds to wait for each Diffbot call, from 5 to 300. Leave blank for 30.
 tools:
   - tools/search_web.yaml
   - tools/extract.yaml
   - tools/search_organizations.yaml
   - tools/search_people.yaml
   - tools/search_news.yaml
-  - tools/enhance_entity.yaml
+  - tools/crawl_start.yaml
+  - tools/crawl_jobs.yaml
   - tools/resolve_entities.yaml
 extra:
   python:

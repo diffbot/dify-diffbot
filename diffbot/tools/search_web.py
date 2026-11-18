@@ -7,7 +7,7 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
 from tools.client import DiffbotError
-from tools.common import make_client, messages, optional_text
+from tools.common import as_dict, make_client, mapped_errors, messages, optional_text
 from tools.dql_builder import bounded_number
 from tools.shape import summarize_lines, trim_web_search
 
@@ -32,32 +32,34 @@ class SearchWebTool(Tool):
             num_results = 5
         else:
             num_results = int(
-                bounded_number(num_value, label="num_results", minimum=1, maximum=10, integer=True)
+                bounded_number(num_value, label="num_results", minimum=1, maximum=50, integer=True)
             )
 
         snippet = optional_text(tool_parameters, "snippet_length").lower()
-        rerank = None
-        if not snippet:
-            snippet = "full" if _is_page_lookup(query) else "short"
-        if snippet not in SNIPPETS:
+        if not snippet and _is_page_lookup(query):
+            snippet = "full"  # a lone url: query asks for the stored page
+        if snippet and snippet not in SNIPPETS:
             raise DiffbotError("snippet_length must be short, medium, long, or full.")
-        if snippet == "full":
-            rerank = "none"
 
         max_tokens = None
         raw_tokens = tool_parameters.get("max_tokens")
         if raw_tokens not in (None, ""):
             max_tokens = int(
-                bounded_number(raw_tokens, label="max_tokens", minimum=500, maximum=8000, integer=True)
+                bounded_number(raw_tokens, label="max_tokens", minimum=500, maximum=32000, integer=True)
             )
 
-        data = make_client(self.runtime.credentials).web_search(
-            query,
-            num_results=num_results,
-            snippet_length=snippet,
-            max_tokens=max_tokens,
-            rerank=rerank,
-        )
+        client = make_client(self.runtime.credentials)
+        with client, mapped_errors(client):
+            # Blank snippet_length is omitted so the API default (long) applies.
+            data = as_dict(
+                client.web_search(
+                    query,
+                    num_results=num_results,
+                    max_tokens=max_tokens,
+                    snippet_length=snippet or None,  # type: ignore[arg-type]
+                ),
+                "web search",
+            )
         payload = trim_web_search(data)
         lines = []
         for index, item in enumerate(payload["results"], start=1):

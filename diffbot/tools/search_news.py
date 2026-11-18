@@ -6,7 +6,7 @@ from typing import Any
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
-from tools.common import make_client, messages, optional_text, result_size
+from tools.common import messages, optional_text, result_offset, result_size, run_dql
 from tools.dql_builder import build_news_query
 from tools.shape import summarize_lines, trim_kg
 
@@ -23,11 +23,10 @@ class SearchNewsTool(Tool):
             "until": optional_text(tool_parameters, "until"),
         }
         query = build_news_query(parameters)
-        size = result_size(tool_parameters, default=5, maximum=10)
+        size = result_size(tool_parameters, default=5, maximum=100)
         include_text = bool(tool_parameters.get("include_text"))
-        data = make_client(self.runtime.credentials).dql(query, size=size)
-        data["dql"] = query
-        payload = trim_kg(data, "article", include_text=include_text)
+        data = run_dql(self.runtime.credentials, query, size=size, offset=result_offset(tool_parameters))
+        payload = trim_kg(data, "article", include_text=include_text, limit=size)
         lines = []
         for index, row in enumerate(payload["results"], start=1):
             headline = row.get("title") or "Untitled article"

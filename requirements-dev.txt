@@ -1,0 +1,3 @@
+# Dev/test requirements. Not a second pin: the SDK comes from diffbot/requirements.txt.
+-r diffbot/requirements.txt
+pytest
