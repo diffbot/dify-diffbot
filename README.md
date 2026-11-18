@@ -33,15 +33,15 @@ Python 3.12+:
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements-dev.txt   # dify_plugin, pytest, and the local SDK checkout
+pip install -r requirements-dev.txt   # dify_plugin, pytest, and diffbot==3.4.0
 pytest -q
 ```
 
-The plugin imports the `diffbot` SDK, which is not released at the needed version yet (3.2.0, then 3.3.0). `diffbot/requirements.txt` therefore pins only `dify_plugin==0.11.0` and carries a TODO for the `diffbot` pin. `requirements-dev.txt` installs the local, unpushed SDK checkout editable (`-e /workspace/diffbot-python`); edit that path if your checkout lives elsewhere.
+`diffbot/requirements.txt` pins `diffbot==3.4.0`. Until that release is on PyPI, install a local checkout of it editable and do not commit the path. `requirements-dev.txt` does not contain a machine-local path.
 
 The tests serve every request from `httpx.MockTransport` and make no Diffbot calls. The wiring tests run against the SDK as installed and against a copy with the 3.3.0 methods removed, which covers the plugin's `client.request()` fallbacks (`verify_token`, `crawl_download`, extract options).
 
-GitHub CI (`.github/workflows/test.yml`) cannot see the local path. Until `diffbot` is released it does not install the SDK, and `tests/conftest.py` skips the SDK-dependent modules (the DQL and URL-policy tests still run). The TODOs in both files say what to delete after release.
+GitHub CI (`.github/workflows/test.yml`) installs `diffbot/requirements.txt`, including `diffbot==3.4.0`, and runs the full suite.
 
 ## Package
 

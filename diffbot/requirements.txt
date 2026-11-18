@@ -1,6 +1,2 @@
 dify_plugin==0.11.0
-# TODO(release): the plugin imports the `diffbot` SDK. Pin it here and in
-# pyproject.toml once released: diffbot==3.2.0 (transport, retries, DQL POST), then
-# diffbot==3.3.0 (verify_token, crawl_download, extract options, response types).
-# Never list both `diffbot` and `diffbot-python`.
-# Until then, local/dev runs use requirements-dev.txt (editable local SDK checkout).
+diffbot==3.4.0
