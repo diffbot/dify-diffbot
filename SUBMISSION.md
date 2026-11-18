@@ -1,6 +1,7 @@
 # Publishing the Diffbot plugin to the Dify Marketplace
 
-This is the runbook for publishing the plugin from the Diffbot organization. As of 10 November 2026 the source is public at https://github.com/diffbot/dify-diffbot and the package passes the marketplace validator, but no pull request has been opened against `langgenius/dify-plugins` and the package has not been installed in Dify Community Edition or Dify Cloud.
+This is the runbook for publishing the plugin from the Diffbot organization. The source is public at https://github.com/diffbot/dify-diffbot. The plugin described here is the `feat/sdk-3.x-wiring` branch: eight tools, including crawl, built on the `diffbot` Python SDK (pinned to `diffbot==3.4.0` at release) and httpx instead of `requests`. As of 17 November 2026 no pull request has been opened against `langgenius/dify-plugins`, and this version has not been installed in Dify Community Edition or Dify Cloud. It also has not been through the marketplace validator yet. `diffbot` 3.4.0 is not on PyPI, so the package cannot be built with its real dependency pin. Every validator result in this file that depends on that is marked `TODO(sdk-release): rerun marketplace validator`. The pre-SDK v0.1 results that used to be here no longer describe this package and have been removed.
+
 
 Checked on 9 November 2026 against:
 
@@ -15,6 +16,7 @@ Checked on 9 November 2026 against:
 - Marketplace search API `POST https://marketplace.dify.ai/api/v1/plugins/search/advanced` and `POST https://marketplace.dify.ai/api/v1/plugins/batch`
 - Diffbot docs at docs.diffbot.com and the public tool list in [diffbot/diffbot-mcp](https://github.com/diffbot/diffbot-mcp)
 
+
 ## Status before a PR
 
 Done:
@@ -24,17 +26,80 @@ Done:
 - Contact: `support@diffbot.com` in `manifest.yaml`, the plugin README, PRIVACY.md, and the PR body.
 - Icon: `_assets/icon.png` is the official 2026 Diffbot logomark, the green rounded-square tile (512×512 PNG).
 - `meta.minimum_dify_version`: 1.14.0. The dify_plugin 0.11.0 README lists Dify 1.14.0 for SDK 0.8.1 and later. The plugin uses no later gated feature (OAuth, dynamic-select, multiple selects, reset_on_change).
-- Live API check: every tool was called against the real Diffbot API on 10 November 2026. Results are below.
+- Unit tests: `pytest` reports 109 passed on 17 November 2026, with mocked HTTP, run against a local editable checkout of the unreleased SDK (`requirements-dev.txt`).
 
 Still to do:
 
-1. Install the `.difypkg` on current Dify Community Edition and on Dify Cloud and record the version and result in the PR. The checklist asks for that test or a written limitation. Remote debugging (`python -m main` with a debug key from the Dify plugin page) is the quickest path.
-2. Confirm that Diffbot is fine with its logo on the Dify Marketplace listing. Reviewers can ask for proof of the right to use a mark.
-3. Have someone at Diffbot read `diffbot/PRIVACY.md` against the current Diffbot privacy policy and terms: user queries, page URLs, and pasted text are sent to Diffbot, and organization, people, and news results can include personal data already on the public web.
+1. **Release `diffbot` 3.4.0 to PyPI and pin it.** `diffbot/requirements.txt` and `diffbot/pyproject.toml` still carry a `TODO(release)` comment in place of the pin, and that comment names 3.2.0/3.3.0. Replace it with `diffbot==3.4.0` in both files. Delete the `-e /workspace/diffbot-python` line from `requirements-dev.txt`. Then delete the feature-detect fallbacks in `diffbot/tools/sdk.py` that 3.4.0 makes unnecessary (`verify_token`, `crawl_download`, extract options).
+2. **TODO(sdk-release): rerun marketplace validator.** Repackage, record the new checksum, and run the toolkit validator with `--pr-body-file` and the OSV lookup. Fill in the "Local validation" and "Results for the current package" sections below with what it reports.
+3. **Rerun the live smoke test, including crawl.** The 10 November 2026 live run was against the pre-SDK package and did not cover crawl. Run every tool against the real API, including `crawl_start` → `crawl_jobs` status → results → delete on a small job whose name is 30 characters or fewer.
+4. Install the `.difypkg` on current Dify Community Edition and on Dify Cloud and record the version and result in the PR. The checklist asks for that test or a written limitation. Remote debugging (`python -m main` with a debug key from the Dify plugin page) is the quickest path.
+5. **Update `diffbot/PRIVACY.md` for crawl.** Its "What is sent to Diffbot" table has no rows for seed URLs, crawl patterns, custom headers, or crawl results, and it does not say that crawl jobs and their data stay in the user's Diffbot account until someone deletes them. The privacy text has to match the package before submission.
+6. Decide what to do with the `block_private_hosts` credential (see "Open questions and risks").
+7. Confirm that Diffbot is fine with its logo on the Dify Marketplace listing. Reviewers can ask for proof of the right to use a mark.
+8. Have someone at Diffbot read `diffbot/PRIVACY.md` against the current Diffbot privacy policy and terms: user queries, page URLs, crawl seeds, and pasted text are sent to Diffbot, and organization, people, and news results can include personal data already on the public web.
+
+## What the plugin is now
+
+### Tools
+
+`provider/diffbot.yaml` registers eight tools, one YAML and one Python file each under `diffbot/tools/`:
+
+| Tool | Diffbot host | What it does |
+| --- | --- | --- |
+| `search_web` | llm.diffbot.com | Web search. 1 to 50 results (default 5), optional snippet length and token budget. A query that is only `url:<page>` returns the indexed copy of that page. |
+| `extract` | api.diffbot.com | Diffbot fetches one public page and returns structured content (auto/analyze, article, product, discussion, image, video, list, event), as markdown or JSON, with optional Extract API options. |
+| `search_organizations` | kg.diffbot.com | Knowledge Graph DQL built from typed fields: name, homepage, industry category, location, headcount and revenue bounds, public-company status. Up to 100 records. |
+| `search_people` | kg.diffbot.com | Knowledge Graph search for people with a public professional presence, by name, employer, title, location. Up to 100 records. |
+| `search_news` | kg.diffbot.com | Knowledge Graph article search by mentioned entity, phrase, publisher, language, and date, newest first. Up to 100 records. |
+| `crawl_start` | api.diffbot.com (`/v3/crawl`) | Starts a background Diffbot crawl job on 1 to 20 public seed URLs and returns only the job name. |
+| `crawl_jobs` | api.diffbot.com (`/v3/crawl`, `/v3/crawl/data`) | `list`, `status`, `results` (up to 1,000 rows, flagged when truncated), or `delete`. Delete is destructive. |
+| `resolve_entities` | nl.diffbot.com | Finds entities in up to 20,000 characters of pasted text and links them to Knowledge Graph ids, with sentiment. |
+
+The `enhance_entity` tool was removed (commit 7323b7b) so the tool set matches the Diffbot Python SDK surface. The plugin has no raw DQL tool.
+
+### Crawl support
+
+- **Background jobs.** `crawl_start` always calls the SDK with `watch=False` and returns as soon as Diffbot reports the job name. Polling would run past the plugin's 300-second call limit. The job keeps running on Diffbot after the Dify call returns, and it uses the account's crawl quota until it finishes or someone deletes it. The model is told to check `crawl_jobs` `status` and then fetch `results`.
+- **Job names, 30 characters max.** Optional `job_name` may use letters, digits, `-`, `_`, and `.`, up to 30 characters. Leave it empty and Diffbot generates `crawl-<timestamp>`. The plugin checks the length itself because the crawler answers a longer name with HTTP 200 plus `errorCode` 505 and creates nothing.
+- **Bounds.** Up to 20 seeds. `max_to_crawl` and `max_to_process` are 1 to 10,000 (default 100). `hops` is 0 to 10 (default 2). `restrict_domain` is on by default. `crawl_delay` is −1 to 3,600 seconds (−1 means the Diffbot default). Optional URL crawl and process patterns, `obey_robots` (form default off; see the robots.txt note under risks), `use_proxies` (default off), a custom request header, and an optional `api_url` for per-page extraction.
+- **Delete is destructive.** `crawl_jobs` `delete` permanently removes the job and the data it collected. There is no undo. The tool, action label, and LLM description all say so, and the LLM description tells the model to delete only when the user explicitly asks. The plugin itself has no confirmation step, so an agent that ignores that instruction can still delete a job.
+- **Account scope.** `list`, `status`, `results`, and `delete` work on every crawl job owned by the token's Diffbot account, including jobs made outside Dify. Nothing limits a Dify workspace to the jobs it started.
+- **Results.** Up to 1,000 rows, string cells clipped to 500 characters. The plugin asks for one extra row so it can set `truncated`. `result_type: urls` returns the crawled-URL report (CSV, parsed to rows).
+
+### Dependencies and transport
+
+- `dify_plugin==0.11.0`.
+- `diffbot==3.4.0`, the official Diffbot Python SDK. **Not pinned yet**: it goes into `requirements.txt` and `pyproject.toml` once 3.4.0 is on PyPI. Until then the tests run against a local editable checkout.
+- `httpx` is the HTTP client. It comes in through the SDK (`httpx>=0.27.0`, along with the SDK's `click` and `rich`) and is not pinned directly by the plugin. `requests` is gone: it is no longer imported or listed, and the old `requests==2.34.2` pin was dropped.
+- Every SDK call goes through `GuardedTransport` (`tools/sdk.py`). It is an httpx transport that refuses non-http(s) schemes and, while `block_private_hosts` is on, loopback, private, link-local, reserved, multicast, `localhost`, `*.local`/`*.internal`, and cloud-metadata hosts before a socket opens. It also honors `HTTP(S)_PROXY`/`ALL_PROXY`/`NO_PROXY` like the old `requests` client did, so proxied Dify deployments still work.
+- Calls the SDK does not have yet go through the SDK's public `client.request()`, never its private attributes: token verification (`GET /v4/account?days=1`), crawl data download, and extract options. Each one feature-detects the native SDK method and uses it when present.
+- The SDK sends the token as a `token` query parameter to api, kg, and nl.diffbot.com, and as `Authorization: Bearer` to llm.diffbot.com (Web Search). Errors are mapped to plugin-safe text and the token is redacted from them.
+
+### Credential fields
+
+From `provider/diffbot.yaml` `credentials_for_provider`:
+
+| Field | Type | Required | Default | Purpose |
+| --- | --- | --- | --- | --- |
+| `diffbot_token` | secret-input | yes | none | Diffbot API token. Format-checked (16 to 256 characters of `A-Za-z0-9._~+-`) and verified with the Account API when the credential is saved. |
+| `request_timeout` | text-input | no | `30` | Seconds per Diffbot call, 5 to 300. The 300 ceiling is dify_plugin's request limit. |
+| `block_private_hosts` | boolean | no | `true` | Toggles the transport host guard described above. See the open question about this field below. |
+
+### Network domains
+
+`manifest.yaml` `network.domains`, unchanged from v0.1:
+
+- `api.diffbot.com` (Extract, Account, Crawl)
+- `kg.diffbot.com` (Knowledge Graph DQL)
+- `llm.diffbot.com` (Web Search)
+- `nl.diffbot.com` (Natural Language)
+
+The plugin process only talks to these four hosts. Neither credentials nor parameters can change the SDK base URLs. User-supplied URLs (extract `url`, crawl `seeds`, crawl `api_url`) go to Diffbot as parameters, and Diffbot's own infrastructure fetches them. The plugin does not.
 
 ## Package the file they will attach
 
-From a checkout of the plugin, with the Dify plugin CLI (this run used `dify-plugin-linux-amd64` 0.6.15):
+From a checkout of the plugin, after `diffbot==3.4.0` is pinned, with the Dify plugin CLI (the v0.1 run used `dify-plugin-linux-amd64` 0.6.15; record the version you use):
 
 ```bash
 dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
@@ -42,7 +107,7 @@ dify plugin checksum dist/diffbot-0.1.0.difypkg
 python3 validator/validate-difypkg.py dist/diffbot-0.1.0.difypkg --output-dir ./validation-report
 ```
 
-The validator lives in [langgenius/dify-marketplace-toolkit](https://github.com/langgenius/dify-marketplace-toolkit). Exit code 0 means no blocking package errors. Warnings still need an explanation in the PR. The PR body below already contains the summary for the current package.
+The validator lives in [langgenius/dify-marketplace-toolkit](https://github.com/langgenius/dify-marketplace-toolkit). Exit code 0 means no blocking package errors. Warnings still need an explanation in the PR. The PR body below has `TODO(sdk-release)` placeholders where the new run's summary goes.
 
 `dify plugin package` produces an unsigned archive. Dify signs marketplace packages after merge. A third-party signature is only for Community Edition installs outside the marketplace:
 
@@ -89,7 +154,7 @@ Later versions add a new file such as `diffbot/diffbot/diffbot-0.2.0.difypkg` an
 
 ## PR body to paste
 
-Fill this from the live template. Do not delete sections. The risk box must be exactly one level. None or several becomes the `risk: missing` label.
+Fill this in from the live template. Keep every section. Check exactly one risk box: none, or more than one, gets the `risk: missing` label. Do not paste it as-is. Every `TODO(sdk-release)` line has to be replaced with real results first.
 
 ````markdown
 # Plugin Submission
@@ -109,14 +174,15 @@ Fill this from the live template. Do not delete sections. The risk box must be e
 
 ## What changed
 
-New tool plugin for Diffbot. Seven tools:
+New tool plugin for Diffbot, built on the official Diffbot Python SDK (`diffbot==3.4.0`). Eight tools:
 
 - Web search on llm.diffbot.com
-- Extract page on api.diffbot.com (auto or a specific page type)
+- Extract a page on api.diffbot.com (auto or a specific page type)
 - Knowledge Graph search for organizations, people, and news
+- Start a Diffbot crawl job, and list, check, fetch results of, or delete crawl jobs (delete is destructive)
 - Resolve entities in pasted text to Knowledge Graph ids
 
-Authentication is a Diffbot token (free at https://app.diffbot.com/get-started). Saving the credential calls the Account API. The plugin does not crawl, run raw DQL, or accept email, phone, or IP as inputs.
+Authentication is a Diffbot token (free at https://app.diffbot.com/get-started). The plugin calls the Account API to check the token when the credential is saved. Two optional credential fields set the request timeout (5 to 300 seconds) and a private-host guard. The plugin has no raw DQL tool and takes no email, phone, or IP inputs.
 
 ## Risk level
 
@@ -124,7 +190,7 @@ Authentication is a Diffbot token (free at https://app.diffbot.com/get-started).
 - [ ] Medium risk
 - [x] High risk
 
-Extract sends a user-supplied http(s) URL to Diffbot, which fetches that URL. People search and entity resolution handle personal data from public profiles and from text the user pastes (names, employers, locations, LinkedIn URLs). The submission rules say to pick the higher level when more than one could apply. Search-only peers have been accepted as low risk; this plugin does more than search, so it is marked high.
+Extract and crawl both send user-supplied http(s) URLs to Diffbot, and Diffbot fetches them. A crawl follows links from up to 20 seeds, up to 10,000 pages, and keeps running in the background on the user's Diffbot account after the tool call returns. That falls under "proxy or crawl arbitrary URLs" in the high-risk definition. The crawl jobs tool can permanently delete a crawl job and its data. People search and entity resolution handle personal data from public profiles and from text the user pastes.
 
 ## Required checks
 
@@ -138,41 +204,50 @@ Extract sends a user-supplied http(s) URL to Diffbot, which fetches that URL. Pe
 - [x] The plugin includes `PRIVACY.md` or a hosted privacy policy, and `manifest.yaml` references it.
 - [x] All user-facing text is primarily in English, with any localized README files following the [i18n guidance](https://docs.dify.ai/en/develop-plugin/features-and-specs/plugin-types/multilingual-readme).
 
+<!-- Re-verify the package-content boxes against the rebuilt 3.4.0 package before submitting. -->
+
 ## Security and privacy notes
 
-- Input constraints and security boundaries: outbound hosts are only api.diffbot.com, kg.diffbot.com, llm.diffbot.com, and nl.diffbot.com. The user cannot pass a raw URL for the plugin to request, and cannot pass raw DQL. Extract rejects non-http(s) URLs, URLs with userinfo, and literal local, private, or link-local hosts. Timeouts are 15 to 45 seconds. Result counts are capped (10 search rows, 20,000 characters of text). Errors are rewritten so the token is not returned. Email and phone fields are dropped from Knowledge Graph records before they reach the model.
-- Arbitrary URL fetching: Extract asks Diffbot to fetch one user-supplied public http(s) URL. The plugin itself only calls the four Diffbot hosts above. Scheme, userinfo, and literal private-host checks are described above.
-- Personal data: People search and entity resolution process names, public profile fields, and location text. They do not accept email, phone, or IP input. Outputs drop email and phone if the API includes them. The Knowledge Graph cannot be filtered by age, so a public profile of a minor could be returned; the privacy policy tells users not to send data about children.
-- Financial data: Organization search can return public revenue and headcount figures. It does not move money.
+- Outbound hosts: the plugin process only calls api.diffbot.com, kg.diffbot.com, llm.diffbot.com, and nl.diffbot.com, through the Diffbot SDK over httpx. No credential or parameter changes those base URLs. A guarded httpx transport refuses non-http(s) schemes and private, loopback, link-local, and metadata hosts before connecting.
+- User-supplied URLs: extract `url`, crawl `seeds`, and crawl `api_url` must be http(s), have no userinfo, be at most 2,048 characters, and not be a local name or a literal private, loopback, link-local, reserved, or metadata address. Bare domains get `https://`. The check is on the literal host only. The plugin does not resolve DNS, because Diffbot does the fetching from its own infrastructure.
+- Crawling: crawl jobs run on Diffbot in the background and use the account's quota until they finish or are deleted. Limits: 20 seeds, 10,000 pages crawled and processed, 10 hops. The crawl stays on the seed domains by default. `obey_robots` is off in the form by default. When it is off the SDK leaves out `obeyRobots`, so the Diffbot crawler's own default applies. A custom request header can be set and is sent to the crawled sites, and the parameter text tells users not to put secrets there. Job names are at most 30 characters.
+- Destructive action: `crawl_jobs` with `delete` permanently removes a crawl job and its collected data. The action is labeled destructive, and the model is told to delete only on an explicit user request. List, status, results, and delete cover every crawl job on the token's account, not only jobs started from Dify.
+- Limits: each call has a configurable timeout of 5 to 300 seconds (default 30). Web search returns at most 50 results, and Knowledge Graph searches return at most 100 records. Crawl results return at most 1,000 rows with cells clipped to 500 characters. Entity resolution accepts up to 20,000 characters. Long text fields are clipped before they reach the model. Errors are rewritten so they never contain the token. Email and phone fields are removed from Knowledge Graph records.
+- Personal data: people search and entity resolution process names, public profile fields, and location text. Neither tool accepts email, phone, or IP input. The Knowledge Graph cannot be filtered by age, so a public profile of a minor could come back. The privacy policy tells users not to send data about children.
+- Financial data: organization search can return public revenue and headcount figures. The plugin does not move money.
 - No command execution, code execution, shell, SQL against a customer database, SSH/SFTP, file operations, or browser automation.
-- Queries, URLs, and pasted text are sent to Diffbot over HTTPS. The plugin does not store them. See PRIVACY.md and https://www.diffbot.com/company/privacy.
+- Queries, URLs, crawl settings, and pasted text go to Diffbot over HTTPS. The plugin stores none of it. Crawl jobs and their results are kept in the user's Diffbot account until deleted. See PRIVACY.md and https://www.diffbot.com/company/privacy.
 
 ## Local validation
 
 ```text
-dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg   # dify CLI 0.6.15
+dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg   # dify CLI <version>
 dify plugin checksum dist/diffbot-0.1.0.difypkg
 python3 validator/validate-difypkg.py dist/diffbot-0.1.0.difypkg --output-dir ./validation-report --pr-body-file pr-body.md
 ```
 
-Checksum `6abed6eb542446e656d598ed5bb98476cc2ec971a3254a7f295661ce10ca84a8`.
+Checksum: TODO(sdk-release): rerun marketplace validator.
 
-Validator: exit code 0, blocking failures 0. package_contents, package_secrets, package_binaries, manifest_metadata, readme_metadata, package_dependencies, python_compile, sensitive_capabilities: PASS. python_safety, prohibited_financial_activity: PASS. access_domains: static scan found only api.diffbot.com, kg.diffbot.com, llm.diffbot.com, nl.diffbot.com, matching `network.domains`. dependency_vulnerabilities: `dify_plugin==0.11.0` and `requests==2.34.2` pinned, no known vulnerabilities.
+Validator: TODO(sdk-release): rerun marketplace validator. Report exit code, blocking failures, and each check, especially:
+- dependency_vulnerabilities: expected pins are `dify_plugin==0.11.0` and `diffbot==3.4.0`. Record what OSV reports, including transitive `httpx`.
+- access_domains: expected hosts are only api.diffbot.com, kg.diffbot.com, llm.diffbot.com, and nl.diffbot.com. The base URLs now sit inside the SDK, so record what the static scan actually finds.
+- python_safety: record the result for the new SDK/httpx code (`tools/sdk.py`, crawl tools).
 
-Unit tests: `pytest` 31 passed (mocked HTTP). Plugin start-up: `validator/test-plugin-install.py` with `INSTALL_METHOD=serverless` succeeded.
+Unit tests: `pytest` 109 passed (mocked HTTP). Plugin start-up (`validator/test-plugin-install.py`, `INSTALL_METHOD=serverless`): TODO(sdk-release): rerun marketplace validator.
 
-Live smoke test against the Diffbot API on 10 November 2026, calling each tool class directly with a real token: credential check, web search, extract, organization search, people search, news search (newest first), and entity resolution all returned results.
+Live smoke test: TODO(sdk-release): rerun every tool, including a crawl start/status/results/delete cycle, against the Diffbot API with a real token.
 
 ## Reviewer notes
 
-- Not yet installed on Dify Community Edition or Dify Cloud. The tools were exercised live outside Dify, and the package passes the toolkit's start-up test. Results from a Community Edition and Dify Cloud install will be added to this PR before it is marked ready for review.
-- `meta.minimum_dify_version` is 1.14.0, from the dify_plugin 0.11.0 compatibility table (SDK 0.8.1 and later). The plugin uses no later gated feature.
+- Not yet installed on Dify Community Edition or Dify Cloud. Results from both will be added to this PR before it is marked ready for review.
+- `meta.minimum_dify_version` is 1.14.0, taken from the dify_plugin 0.11.0 compatibility table (SDK 0.8.1 and later). The plugin uses no later gated feature.
+- Crawl is asynchronous on purpose. A Dify tool call is capped at 300 seconds, so `crawl_start` returns a job name and the agent polls with `crawl_jobs`.
 - Industry filter on organization search is an exact `categories.name`. Free text is not resolved through the ontology in this version.
-- Job titles match profile text as written. `CEO` and `Chief Executive Officer` may return different people; the tool description tells the model to try both.
+- Job titles match profile text as written. `CEO` and `Chief Executive Officer` may return different people. The tool description tells the model to try both.
 - The icon is Diffbot's own 2026 logomark, published by Diffbot.
 ````
 
-Leave the "tested on Community Edition and Dify Cloud" box unchecked until that test exists. Do not check a box the package does not meet. Explain the gap under reviewer notes instead.
+Leave the "tested on Community Edition and Dify Cloud" box unchecked until that test has been done. Never check a box the package does not meet. Explain the gap under reviewer notes instead.
 
 ## What reviewers look for
 
@@ -216,77 +291,62 @@ No Diffbot Dify plugin showed up in the Marketplace search, in the Diffbot GitHu
 
 A third-party write-up of Marketplace tool installs on 16 October 2026 put Tavily, Jina, and Firecrawl in the same band (about 399k, 227k, and 204k). The 9 November API numbers above are higher and are the ones to cite.
 
+
 ## v1 tool choice
 
-`diffbot-mcp` tools on 9 November 2026: `extract`, `search_web`, `crawl`, `resolve_entities`, `search_news`, `search_organizations`, `search_people`, `search_places`, `search_deals`, `dql`, `dql_probe`, `dql_ontology`. The October 2026 changelog removed MCP `enhance` in favor of `resolve_entities` plus the typed searches. This plugin does not expose Enhance, which matches the Diffbot Python SDK surface.
+`diffbot-mcp` tools on 9 November 2026: `extract`, `search_web`, `crawl`, `resolve_entities`, `search_news`, `search_organizations`, `search_people`, `search_places`, `search_deals`, `dql`, `dql_probe`, `dql_ontology`. The October 2026 changelog removed MCP `enhance` in favor of `resolve_entities` plus the typed searches. This plugin dropped its `enhance_entity` tool for the same reason (commit 7323b7b), so it matches the Diffbot Python SDK surface.
 
-v1 keeps the tools a Dify user already expects from Tavily or Firecrawl (search and extract) and adds the Knowledge Graph lookups that distinguish Diffbot (organizations, people, news, entity linking). It does not expose raw DQL, so a model cannot send an unbounded query. It does not start crawls, which are background jobs and a clearer "crawl arbitrary URLs" case. Places, deals, ontology browse, and hit-count probes can be a later version once v1 has been installed for real.
+v1 has what a Dify user expects from Tavily or Firecrawl: search, extract, and crawl. It adds the Knowledge Graph lookups that set Diffbot apart: organizations, people, news, and entity linking. There is no raw DQL tool, so a model cannot send an unbounded query. Crawl is in v1 because Tavily and Firecrawl both offer it. That decision moves the plugin into the "crawl arbitrary URLs" high-risk case. Places, deals, ontology browse, and hit-count probes can come in a later version once v1 has been installed for real.
 
-Authentication matches the docs, with one exception. Extract, Account, DQL, and Natural Language take `token` as a query parameter on `api.diffbot.com`, `kg.diffbot.com`, and `nl.diffbot.com`. Web Search on `llm.diffbot.com` is documented with `Authorization: Bearer`, and the plugin does that so the token is not written into the query string for that host.
+The SDK handles authentication as the API docs describe. Extract, Account, Crawl, DQL, and Natural Language take `token` as a query parameter on `api.diffbot.com`, `kg.diffbot.com`, and `nl.diffbot.com`. Web Search on `llm.diffbot.com` uses `Authorization: Bearer`, so the token does not appear in that host's query string.
 
 ## Results for the current package
 
-Unit tests, no network:
+Unit tests, no network, 17 November 2026, against a local editable checkout of the unreleased SDK:
 
 ```text
 pytest
-31 passed
+109 passed
 ```
 
-Dify CLI 0.6.15:
+Package, checksum, archive size and file list: **TODO(sdk-release): rerun marketplace validator.** The package should hold the manifest, provider, eight tool YAML/Python pairs, the shared modules (`client.py`, `common.py`, `sdk.py`, `sdk_types.py`, `dql_builder.py`, `shape.py`), README, PRIVACY.md, icon, `main.py`, `requirements.txt`, and `pyproject.toml`. Check the real archive against that list. `.env.example` stays in git for remote debugging and `.difyignore` keeps it out of the package. `dist/` is not tracked in git.
 
-```text
-dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
-dify plugin checksum dist/diffbot-0.1.0.difypkg
-# checksum 6abed6eb542446e656d598ed5bb98476cc2ec971a3254a7f295661ce10ca84a8
-```
+Marketplace toolkit validator: **TODO(sdk-release): rerun marketplace validator.** The pre-SDK v0.1 numbers that used to be here (31 tests, checksum `6abed6eb…`, `requests==2.34.2` with no known vulnerabilities, a four-host access_domains scan of the plugin's own code, a python_safety pass) were measured on a different dependency set and code path. Do not reuse them. Record dependency_vulnerabilities, access_domains, python_safety, the PR-body checks, and the serverless start-up test from the new run.
 
-The archive is about 62 KB, 29 files: the manifest, provider, seven tool pairs, client code, README, PRIVACY.md, icon, `main.py`, `requirements.txt`, and `pyproject.toml`. `.env.example` is kept in git for remote debugging and excluded from the package by `.difyignore`. `dist/` is not tracked in git.
-
-Marketplace toolkit validator, with `--pr-body-file` and the OSV lookup:
-
-- Exit code 0. Blocking failures: 0.
-- package_contents, package_secrets, package_binaries, manifest_metadata, readme_metadata, package_dependencies, python_compile, and sensitive_capabilities passed. python_safety and prohibited_financial_activity passed.
-- access_domains: the static scan found only `api.diffbot.com`, `kg.diffbot.com`, `llm.diffbot.com`, and `nl.diffbot.com`, which are the `network.domains` entries.
-- dependency_vulnerabilities: pinned `dify_plugin==0.11.0` and `requests==2.34.2` had no known vulnerabilities.
-- `check-pr-body.py` and `check-pr-review-notes.py` passed on the PR body.
-- `test-plugin-install.py` (`INSTALL_METHOD=serverless`) started the plugin and got a response on port 8080.
-
-Live smoke test, 10 November 2026, each tool class called directly with a real token (not inside Dify):
-
-```text
-[PASS] credential check (2.8s): ok
-[PASS] search_web (1.9s): text=Diffbot web search returned 3 result(s). 1. Knowledge Graph | Diffbot (score 0.992)    https://www.diffbot.com/products/knowledge-graph/    # Knowledge Graph  [](https://www.diffbot.com/products/knowl | json keys=['query', 'timeMs', 'results'] n=3 | first={"title": "Knowledge Graph | Diffbot", "date": null, "pageUrl": "https://www.diffbot.com/products/knowledge-graph/", "score": 0.992}
-[PASS] extract (1.9s): text=Diffbot extract for https://www.diffbot.com/company/ About Diffbot | Diffbot (other) https://www.diffbot.com/company/about | json keys=['objects', 'humanLanguage', 'url', 'page_type'] n=1 | first={"title": "About Diffbot | Diffbot", "pageUrl": "https://www.diffbot.com/company/about", "type": "other"}
-[PASS] search_organizations (1.5s): text=Organization search returned 2 record(s) of 4. 1. Diffbot — Menlo Park, United States    diffbot.com    American machine learning and knowledge management company 2. ROS Mobile Robots — Feldkirch, Aus | json keys=['dql', 'hits', 'returned', 'results'] n=2 | first={"name": "Diffbot", "diffbotUri": "http://diffbot.com/entity/EYX1i02YVPsuT7fPLUYgRhQ"}
-[PASS] search_people (2.4s): employer "Diffbot" + title "CEO" -> 1 public profile (Diffbot's founder and CEO); grouped employments.{...} query
-[PASS] search_news (2.1s): text=News search returned 3 article(s) of 3552, newest publication date first. 1. Windows-Sicherheit: Microsoft stuft Family-Safety-App als veraltet ein (WinFuture.de — d2026-11-10T19:07)    https://winfut | json keys=['dql', 'hits', 'returned', 'results'] n=3 | first={"title": "Windows-Sicherheit: Microsoft stuft Family-Safety-App als veraltet ein", "date": "d2026-11-10T19:07", "pageUrl": "https://winfuture.de/news,162580.html"}
-[PASS] resolve_entities (1.8s): text=Resolved 4 entities from the supplied text. - Mike Tung [person] id=ESGMaGV9uP0SuTmfPTtNEoA - Menlo Park [location, administrative area, city] id=EQiAUr370NpW1gvx-V4fTrQ - Diffbot [organization] id=EY | json keys=['sentiment', 'entities', 'dql_filter'] n=4
-```
-
-A live DQL check decided news ordering. `type:Article tags.label:"Microsoft" date>="2026-01-01"` with `sortBy:date` returned articles from 10 November 2026 first. With `revSortBy:date` it returned 1 January 2026 first. The plugin now uses `sortBy:date`.
-
-People search with employer `Diffbot` and title `Chief Executive Officer` returned an executive assistant at another company, because separate `employments.*` clauses could match different jobs. The plugin now groups them as `employments.{employer.name:"..." title:"..."}`. Titles still match profile text as written: `CEO` finds Diffbot's founder and `Chief Executive Officer` does not.
+Live smoke test: **TODO(sdk-release): rerun.** The 10 November 2026 run covered the pre-SDK package (credential check, web search, extract, organization, people, and news search, and entity resolution). It did not cover crawl. Two behaviors it settled are still in the code. News uses `sortBy:date` (newest first). People search groups employer and title as `employments.{employer.name:"..." title:"..."}` so both clauses must match the same job. Recheck both in the new run.
 
 ## Open questions and risks
 
 Blockers before a real PR:
 
+- `diffbot` 3.4.0 must be on PyPI and pinned, and the validator rerun on the resulting package. Until then the dependency, access-domain, and safety results are unknown.
+- PRIVACY.md does not describe crawl yet.
 - The package has not been installed in Dify Community Edition or Dify Cloud. Do that, or write the limitation in the PR.
 - Whoever opens the PR must be allowed to publish under the `diffbot` author name. Open it from a fork owned by, or on behalf of, the `diffbot` organization.
 
+Crawl scope and risk:
+
+- Crawling user-supplied URLs is the main reason this plugin is high risk. An agent can start a crawl of any public site the user or the model names. The crawl follows links up to the configured limits and runs on Diffbot's infrastructure, against the user's own Diffbot account and quota. The plugin's URL guard stops literal private and metadata targets. It does not resolve hostnames, and it cannot judge whether the user is allowed to crawl a site. That depends on Diffbot's terms and the user's account.
+- The `obey_robots` form field defaults to off. The SDK sends `obeyRobots=1` only when it is on. When it is off, nothing is sent and the Diffbot crawler's own robots.txt default applies, whatever that default is. So the toggle can say "off" while the crawler is still obeying robots.txt, or the reverse. Confirm the API default before release and make the label match it. A reviewer may also want robots.txt respected by default in a Dify-facing tool. That is a product call, and the change is a one-line YAML edit.
+- Crawl jobs outlive the tool call. A user who starts a large crawl from an agent keeps using quota after the conversation ends, and the plugin has no cleanup. The tool text says the job runs in the background, and `crawl_jobs` can stop it with `delete`.
+- `delete` is irreversible and has no confirmation step in the plugin. All that keeps a model from deleting is the LLM description ("only use delete when the user explicitly asks"). It also reaches every crawl job on the token's account, including jobs created outside Dify. If reviewers object, the options are to split delete into its own tool that users can leave disabled, or to limit delete to job names the plugin generated.
+- The custom header parameter is sent to every crawled site. The parameter text warns against putting secrets there, but the plugin does not enforce that.
+
+Credential form:
+
+- `block_private_hosts` has no observable effect today. No credential or parameter can change the SDK base URLs, so the transport only ever talks to the four public `*.diffbot.com` hosts, and user-supplied URLs are always checked by `validate_public_http_url` whatever the toggle says. The help text ("Leave on unless you run a self-hosted gateway") promises a feature that does not exist. Before submission, remove the field (recommended for the first release) or add a real `api_base` credential that the toggle applies to. The second option also needs a `network.domains` review.
+
 Product and API risks:
 
-- Free tokens may not include Web Search, Knowledge Graph, and Natural Language together. The Account API can succeed while a later call returns 401 or 403. The 10 November live test used one Diffbot token with all of them enabled; a free-plan token has not been tried.
-- Organization industry is an exact category string. The MCP server resolves free text through the ontology. v1 will return empty results for "software" when the category is "Software Companies". Either document that sharply or add ontology resolution in a later version.
-- Job-title abbreviations are not expanded (`CEO` versus `Chief Executive Officer`). The MCP server does expand them. The tool description tells the model to try both forms, but people search can still under-count until expansion exists.
-- Web Search might also accept `token` as a query parameter. This plugin uses only the documented bearer header. If a token type rejects the header, the tool fails closed. That is a live test, not a guess to code around.
+- Free tokens may not include Web Search, Knowledge Graph, Natural Language, and Crawl together. The Account API check can pass while a later call returns 401 or 403. No free-plan token has been tested.
+- Organization industry is an exact category string. The MCP server resolves free text through the ontology. v1 returns nothing for "software" when the category is "Software Companies". Either document that clearly or add ontology resolution in a later version.
+- Job-title abbreviations are not expanded (`CEO` versus `Chief Executive Officer`). The MCP server does expand them. The tool description tells the model to try both forms, but people search can still miss matches until expansion exists.
 
 Review and policy risks:
 
-- High risk is the honest box. A reviewer can still ask for a narrower tool set. Dropping Extract would remove user-supplied URL fetch, but people search would still be personal data. Dropping people and entity resolution would look more like Tavily and might be argued as medium, because the remaining URL fetch is still "user-provided URLs" in the medium definition and "proxy or crawl arbitrary URLs" in the high definition. The written rule is to choose the higher label. Do not mark this low because Exa did. Exa's PR text said it does not fetch arbitrary URLs. This plugin does ask Diffbot to fetch them.
-- Diffbot's privacy policy says the service is not directed at anyone 18 or under, and gives parents a contact address for privacy requests. The Knowledge Graph can still return a public profile of a younger person, and this plugin cannot filter by age. Call that out in review rather than claiming the plugin is age-safe.
-- Dify Cloud customers will send workspace prompts to Diffbot. Whether that needs a DPA or a customer-facing subprocessors note is a Diffbot legal question. The plugin policy links Diffbot's policy and says the plugin itself stores nothing. It does not answer the Dify customer's contract question.
+- High risk is the honest box. Extract and crawl both have Diffbot fetch user-supplied URLs, and crawl is the plain "crawl arbitrary URLs" case. A reviewer can still ask for a narrower tool set. Dropping crawl would leave single-page Extract ("user-provided URLs") and people search (personal data), which is still at least medium. The written rule is to pick the higher label. Do not mark this low because Exa did: Exa's PR said it does not fetch arbitrary URLs, and this plugin does.
+- Diffbot's privacy policy says the service is not directed at anyone 18 or under, and gives parents a contact address for privacy requests. The Knowledge Graph can still return a public profile of a younger person, and this plugin cannot filter by age. Raise that in review rather than claiming the plugin is age-safe.
+- Dify Cloud customers will send workspace prompts and crawl targets to Diffbot. Whether that needs a DPA or a customer-facing subprocessors note is a question for Diffbot legal.
 - A merged PR might not produce a listing. Watch the Marketplace after merge, as Exa had to.
 - `meta.minimum_dify_version` is 1.14.0, taken from the SDK compatibility table rather than an install on 1.14.0. If the Community Edition test runs on a newer version and a reviewer asks, either test 1.14.0 or raise the floor to the tested version.
 
