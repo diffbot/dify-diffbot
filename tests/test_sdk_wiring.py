@@ -138,12 +138,14 @@ def test_explicit_inner_transport_ignores_proxy_environment(monkeypatch):
     assert sdk.GuardedTransport(inner)._transport_for(httpx.URL("https://api.diffbot.com/")) is inner
 
 
-def test_guard_can_be_disabled_for_self_hosted_gateways():
-    inner = httpx.MockTransport(lambda r: httpx.Response(200, json={"objects": []}))
-    client = Diffbot(
-        TOKEN, analyze_url="http://10.0.0.5/v3", transport=sdk.GuardedTransport(inner, block_private_hosts=False)
-    )
-    assert client.extract("https://example.org") == {"objects": []}
+def test_guard_cannot_be_disabled():
+    calls = []
+    inner = httpx.MockTransport(lambda r: calls.append(r) or httpx.Response(200, json={"objects": []}))
+    client = Diffbot(TOKEN, analyze_url="http://10.0.0.5/v3", transport=sdk.GuardedTransport(inner))
+    with pytest.raises(Exception):
+        client.extract("https://example.org")
+    assert calls == []
+    assert not hasattr(sdk, "_as_bool")
 
 
 def test_rate_limit_maps_to_a_safe_message(serve):

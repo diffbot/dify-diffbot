@@ -26,7 +26,7 @@ Raw DQL, ontology lookup, Ask, places, and deals are not in this version. Indust
 1. Create a token at [app.diffbot.com/get-started](https://app.diffbot.com/get-started).
 2. In Dify, open Plugins, install this package, and choose Diffbot.
 3. Paste the token into **Diffbot token**.
-4. Optional: set **Request timeout** (5 to 300 seconds, default 30). **Block private hosts** stays on unless you run a self-hosted gateway.
+4. Optional: set **Request timeout** (5 to 300 seconds, default 30).
 
 Dify stores the value as a secret. The plugin sends it only to the Diffbot hosts listed in `manifest.yaml`. Web Search uses `Authorization: Bearer`. The other calls use the `token` query parameter, which is how those APIs authenticate. Saving the credential calls `GET https://api.diffbot.com/v4/account` with `days=1` and does not show the account payload.
 

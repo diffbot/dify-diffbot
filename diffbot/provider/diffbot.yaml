@@ -31,14 +31,6 @@ credentials_for_provider:
       en_US: "30"
     help:
       en_US: Seconds to wait for each Diffbot call, from 5 to 300. Leave blank for 30.
-  block_private_hosts:
-    type: boolean
-    required: false
-    default: true
-    label:
-      en_US: Block private hosts
-    help:
-      en_US: Refuse requests to loopback, private, and cloud-metadata addresses. Leave on unless you run a self-hosted gateway.
 tools:
   - tools/search_web.yaml
   - tools/extract.yaml

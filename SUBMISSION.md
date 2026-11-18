@@ -35,7 +35,6 @@ Still to do:
 3. **Rerun the live smoke test, including crawl.** The 10 November 2026 live run was against the pre-SDK package and did not cover crawl. Run every tool against the real API, including `crawl_start` → `crawl_jobs` status → results → delete on a small job whose name is 30 characters or fewer.
 4. Install the `.difypkg` on current Dify Community Edition and on Dify Cloud and record the version and result in the PR. The checklist asks for that test or a written limitation. Remote debugging (`python -m main` with a debug key from the Dify plugin page) is the quickest path.
 5. **Update `diffbot/PRIVACY.md` for crawl.** Its "What is sent to Diffbot" table has no rows for seed URLs, crawl patterns, custom headers, or crawl results, and it does not say that crawl jobs and their data stay in the user's Diffbot account until someone deletes them. The privacy text has to match the package before submission.
-6. Decide what to do with the `block_private_hosts` credential (see "Open questions and risks").
 7. Confirm that Diffbot is fine with its logo on the Dify Marketplace listing. Reviewers can ask for proof of the right to use a mark.
 8. Have someone at Diffbot read `diffbot/PRIVACY.md` against the current Diffbot privacy policy and terms: user queries, page URLs, crawl seeds, and pasted text are sent to Diffbot, and organization, people, and news results can include personal data already on the public web.
 
@@ -72,7 +71,7 @@ The `enhance_entity` tool was removed (commit 7323b7b) so the tool set matches t
 - `dify_plugin==0.11.0`.
 - `diffbot==3.4.0`, the official Diffbot Python SDK. **Not pinned yet**: it goes into `requirements.txt` and `pyproject.toml` once 3.4.0 is on PyPI. Until then the tests run against a local editable checkout.
 - `httpx` is the HTTP client. It comes in through the SDK (`httpx>=0.27.0`, along with the SDK's `click` and `rich`) and is not pinned directly by the plugin. `requests` is gone: it is no longer imported or listed, and the old `requests==2.34.2` pin was dropped.
-- Every SDK call goes through `GuardedTransport` (`tools/sdk.py`). It is an httpx transport that refuses non-http(s) schemes and, while `block_private_hosts` is on, loopback, private, link-local, reserved, multicast, `localhost`, `*.local`/`*.internal`, and cloud-metadata hosts before a socket opens. It also honors `HTTP(S)_PROXY`/`ALL_PROXY`/`NO_PROXY` like the old `requests` client did, so proxied Dify deployments still work.
+- Every SDK call goes through `GuardedTransport` (`tools/sdk.py`). It is an httpx transport that refuses non-http(s) schemes and loopback, private, link-local, reserved, multicast, `localhost`, `*.local`/`*.internal`, and cloud-metadata hosts before a socket opens. The guard is always on; there is no credential to turn it off, and the plugin does not support self-hosted gateways or custom base URLs. It also honors `HTTP(S)_PROXY`/`ALL_PROXY`/`NO_PROXY` like the old `requests` client did, so proxied Dify deployments still work.
 - Calls the SDK does not have yet go through the SDK's public `client.request()`, never its private attributes: token verification (`GET /v4/account?days=1`), crawl data download, and extract options. Each one feature-detects the native SDK method and uses it when present.
 - The SDK sends the token as a `token` query parameter to api, kg, and nl.diffbot.com, and as `Authorization: Bearer` to llm.diffbot.com (Web Search). Errors are mapped to plugin-safe text and the token is redacted from them.
 
@@ -84,7 +83,6 @@ From `provider/diffbot.yaml` `credentials_for_provider`:
 | --- | --- | --- | --- | --- |
 | `diffbot_token` | secret-input | yes | none | Diffbot API token. Format-checked (16 to 256 characters of `A-Za-z0-9._~+-`) and verified with the Account API when the credential is saved. |
 | `request_timeout` | text-input | no | `30` | Seconds per Diffbot call, 5 to 300. The 300 ceiling is dify_plugin's request limit. |
-| `block_private_hosts` | boolean | no | `true` | Toggles the transport host guard described above. See the open question about this field below. |
 
 ### Network domains
 
@@ -182,7 +180,7 @@ New tool plugin for Diffbot, built on the official Diffbot Python SDK (`diffbot=
 - Start a Diffbot crawl job, and list, check, fetch results of, or delete crawl jobs (delete is destructive)
 - Resolve entities in pasted text to Knowledge Graph ids
 
-Authentication is a Diffbot token (free at https://app.diffbot.com/get-started). The plugin calls the Account API to check the token when the credential is saved. Two optional credential fields set the request timeout (5 to 300 seconds) and a private-host guard. The plugin has no raw DQL tool and takes no email, phone, or IP inputs.
+Authentication is a Diffbot token (free at https://app.diffbot.com/get-started). The plugin calls the Account API to check the token when the credential is saved. One optional credential field sets the request timeout (5 to 300 seconds). The private-host guard is always on. The plugin has no raw DQL tool and takes no email, phone, or IP inputs.
 
 ## Risk level
 
@@ -331,10 +329,6 @@ Crawl scope and risk:
 - Crawl jobs outlive the tool call. A user who starts a large crawl from an agent keeps using quota after the conversation ends, and the plugin has no cleanup. The tool text says the job runs in the background, and `crawl_jobs` can stop it with `delete`.
 - `delete` is irreversible and has no confirmation step in the plugin. All that keeps a model from deleting is the LLM description ("only use delete when the user explicitly asks"). It also reaches every crawl job on the token's account, including jobs created outside Dify. If reviewers object, the options are to split delete into its own tool that users can leave disabled, or to limit delete to job names the plugin generated.
 - The custom header parameter is sent to every crawled site. The parameter text warns against putting secrets there, but the plugin does not enforce that.
-
-Credential form:
-
-- `block_private_hosts` has no observable effect today. No credential or parameter can change the SDK base URLs, so the transport only ever talks to the four public `*.diffbot.com` hosts, and user-supplied URLs are always checked by `validate_public_http_url` whatever the toggle says. The help text ("Leave on unless you run a self-hosted gateway") promises a feature that does not exist. Before submission, remove the field (recommended for the first release) or add a real `api_base` credential that the toggle applies to. The second option also needs a `network.domains` review.
 
 Product and API risks:
 

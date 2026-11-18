@@ -61,8 +61,7 @@ class GuardedTransport(httpx.BaseTransport):
     once an explicit transport is passed, which would break proxied Dify deployments.
     """
 
-    def __init__(self, inner: httpx.BaseTransport | None = None, *, block_private_hosts: bool = True) -> None:
-        self._block = block_private_hosts
+    def __init__(self, inner: httpx.BaseTransport | None = None) -> None:
         self._proxied: dict[str, httpx.BaseTransport] = {}
         if inner is None:
             proxies = urllib.request.getproxies()
@@ -81,22 +80,13 @@ class GuardedTransport(httpx.BaseTransport):
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         if request.url.scheme not in ("http", "https"):
             raise DiffbotError("Request scheme is not allowed.")
-        if self._block:
-            check_public_host(request.url.host or "")
+        check_public_host(request.url.host or "")
         return self._transport_for(request.url).handle_request(request)
 
     def close(self) -> None:
         self._inner.close()
         for transport in self._proxied.values():
             transport.close()
-
-
-def _as_bool(value: Any, default: bool) -> bool:
-    if value is None or value == "":
-        return default
-    if isinstance(value, str):
-        return value.strip().lower() not in {"false", "0", "no", "off"}
-    return bool(value)
 
 
 def parse_timeout(value: Any) -> float:
@@ -117,8 +107,7 @@ def make_client(credentials: Mapping[str, Any] | None, *, transport: httpx.BaseT
     raw = credentials.get("diffbot_token", "")
     token = normalize_token(raw if isinstance(raw, str) else "")
     timeout = parse_timeout(credentials.get("request_timeout"))
-    block = _as_bool(credentials.get("block_private_hosts"), True)
-    return Diffbot(token, timeout=timeout, transport=GuardedTransport(transport, block_private_hosts=block))
+    return Diffbot(token, timeout=timeout, transport=GuardedTransport(transport))
 
 
 def api_error_message(exc: BaseException, token: str) -> str:
