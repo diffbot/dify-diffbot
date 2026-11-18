@@ -8,7 +8,6 @@ the real method so it drops out when the SDK ships it:
 * ``verify_token``     -> diffbot 3.3.0 (fallback: ``GET /v4/account?days=1``)
 * ``crawl_download``   -> diffbot 3.3.0 (fallback: ``GET /v3/crawl/data``)
 * extract options      -> diffbot 3.3.0 (fallback: ``GET /v3/{api}`` with the same params)
-* Enhance              -> never in the SDK; a thin plugin-side wrapper stays.
 
 TODO: when diffbot 3.2.0 / 3.3.0 are released, pin ``diffbot`` in
 ``requirements.txt`` / ``pyproject.toml`` and delete the fallbacks.
@@ -302,20 +301,6 @@ def crawl_download(
     return parsed
 
 
-# ---------------------------------------------------------------- enhance (plugin-side only)
-
-
-def enhance(client: Diffbot, params: Mapping[str, Any]) -> dict[str, Any]:
-    """Thin wrapper over the public transport; the SDK deliberately has no Enhance."""
-    response = client.request("GET", f"{client.kg_base}/kg/v3/enhance", params={"token": client.token, **params})
-    data = response.json()
-    if not isinstance(data, dict):
-        raise DiffbotError("Diffbot Enhance returned an unexpected response.")
-    if data.get("errorCode"):  # some failures come back as HTTP 200 + errorCode
-        raise APIError(response.status_code, response.text)
-    return data
-
-
 def as_dict(value: Any, what: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise DiffbotError(f"Diffbot {what} returned an unexpected response.")
@@ -331,5 +316,4 @@ __all__ = [
     "crawl_start",
     "crawl_get_job",
     "crawl_download",
-    "enhance",
 ]

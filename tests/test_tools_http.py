@@ -7,7 +7,6 @@ import pytest
 
 from provider.diffbot import DiffbotProvider
 from tools.client import TOKEN_PATTERN, DiffbotError
-from tools.enhance_entity import EnhanceEntityTool
 from tools.extract import ExtractTool
 from tools.resolve_entities import ResolveEntitiesTool
 from tools.search_news import SearchNewsTool
@@ -269,43 +268,6 @@ def test_news_search_passes_the_built_query(session_factory):
     assert payload["results"][0]["date"] == "d2024-05-01"
     assert "html" not in payload["results"][0]
     assert "text" not in payload["results"][0]
-
-
-def test_enhance_sends_partial_identifiers(session_factory):
-    def responder(method, url, kwargs):
-        assert kwargs["params"]["type"] == "Organization"
-        assert kwargs["params"]["name"] == "Diffbot"
-        assert "email" not in kwargs["params"]
-        return FakeResponse(
-            200,
-            {
-                "hits": 1,
-                "data": [
-                    {
-                        "score": 0.7,
-                        "entity": {
-                            "name": "Diffbot",
-                            "homepageUri": "https://www.diffbot.com",
-                            "diffbotUri": "http://diffbot.com/entity/org1",
-                            "allEmail": ["secret@example.com"],
-                        },
-                    }
-                ],
-            },
-        )
-
-    session_factory(responder)
-    tool = EnhanceEntityTool.from_credentials({"diffbot_token": TOKEN})
-    payload = _json_message(list(tool.invoke({"entity_type": "Organization", "name": "Diffbot"})))
-    assert payload["matches"][0]["score"] == 0.7
-    assert payload["matches"][0]["entity"]["id"] == "org1"
-    assert "secret@example.com" not in json.dumps(payload)
-
-
-def test_enhance_rejects_employer_for_an_organization():
-    tool = EnhanceEntityTool.from_credentials({"diffbot_token": TOKEN})
-    with pytest.raises(DiffbotError, match="employer"):
-        list(tool.invoke({"entity_type": "Organization", "name": "Diffbot", "employer": "Nobody"}))
 
 
 def test_resolve_entities_builds_a_dql_filter(session_factory):

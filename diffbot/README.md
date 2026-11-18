@@ -2,7 +2,7 @@
 
 Search the public web and the Diffbot Knowledge Graph from a Dify agent or workflow.
 
-Diffbot structures pages and keeps a knowledge graph of organizations, people, and articles. This plugin exposes a small v1 of that API: web search, page extraction, organization and people lookup, news search, entity enhancement, and named-entity resolution. A free token from [app.diffbot.com/get-started](https://app.diffbot.com/get-started) is enough to authenticate.
+Diffbot structures pages and keeps a knowledge graph of organizations, people, and articles. This plugin exposes a small v1 of that API: web search, page extraction, organization and people lookup, news search, and named-entity resolution. A free token from [app.diffbot.com/get-started](https://app.diffbot.com/get-started) is enough to authenticate.
 
 Published by Diffbot. Source: https://github.com/diffbot/dify-diffbot. Support: support@diffbot.com.
 
@@ -17,7 +17,6 @@ Published by Diffbot. Source: https://github.com/diffbot/dify-diffbot. Support: 
 | Search news | same DQL endpoint | Articles by mentioned entity, phrase, publisher, language, or date. |
 | Start crawl | `GET https://api.diffbot.com/v3/crawl` | Start a background crawl of public seed URLs. Returns a job name, never results. |
 | Crawl jobs | `/v3/crawl`, `/v3/crawl/data` | List jobs, check status, fetch results (up to 1000 rows, truncated), or delete a job. **Delete is destructive** and removes the job and its data. |
-| Enhance entity | `GET https://kg.diffbot.com/kg/v3/enhance` | Best Knowledge Graph match for a person or organization from a name, URL, or employer. |
 | Resolve entities | `POST https://nl.diffbot.com/v1/` | Names in a passage, linked to Knowledge Graph ids when Diffbot can match them. |
 
 Raw DQL, ontology lookup, Ask, places, and deals are not in this version. Industry filters must already be exact category names such as `Software Companies`. The plugin does not resolve free text onto the taxonomy.
@@ -31,11 +30,11 @@ Raw DQL, ontology lookup, Ask, places, and deals are not in this version. Indust
 
 Dify stores the value as a secret. The plugin sends it only to the Diffbot hosts listed in `manifest.yaml`. Web Search uses `Authorization: Bearer`. The other calls use the `token` query parameter, which is how those APIs authenticate. Saving the credential calls `GET https://api.diffbot.com/v4/account` with `days=1` and does not show the account payload.
 
-The token needs access to Extract, Web Search, Knowledge Graph, Enhance, and Natural Language. A free plan may not include every product. If a call returns an authorization error after the account check succeeds, confirm that product is enabled for the token.
+The token needs access to Extract, Web Search, Knowledge Graph, and Natural Language. A free plan may not include every product. If a call returns an authorization error after the account check succeeds, confirm that product is enabled for the token.
 
 ## Use the tools
 
-In an Agent, add the Diffbot tools and ask for a company, a news topic, or a URL. In a Workflow, add a tool node and pick one action. Required fields are marked on each tool. Limits: up to 50 web results, 100 Knowledge Graph rows per call (page with Offset), 3 enhance matches, and 20,000 characters of text for entity resolution. Extract has optional caller-set options (fields, timeout, mode, paging, natural language, and others).
+In an Agent, add the Diffbot tools and ask for a company, a news topic, or a URL. In a Workflow, add a tool node and pick one action. Required fields are marked on each tool. Limits: up to 50 web results, 100 Knowledge Graph rows per call (page with Offset), and 20,000 characters of text for entity resolution. Extract has optional caller-set options (fields, timeout, mode, paging, natural language, and others).
 
 Extract accepts `http` and `https` URLs; a bare domain such as `example.com` gets `https://`. Localhost, link-local, and private literal addresses are rejected before the request is sent.
 

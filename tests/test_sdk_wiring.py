@@ -15,7 +15,6 @@ from tools import sdk
 from tools.client import DiffbotError
 from tools.crawl_jobs import CrawlJobsTool
 from tools.crawl_start import CrawlStartTool
-from tools.enhance_entity import EnhanceEntityTool
 from tools.extract import ExtractTool
 from tools.search_organizations import SearchOrganizationsTool
 from tools.search_web import SearchWebTool
@@ -88,13 +87,6 @@ def test_non_json_body_is_a_safe_error(serve):
     serve(lambda r: httpx.Response(200, text="<html>oops</html>"))
     with pytest.raises(DiffbotError, match="non-JSON"):
         list(SearchWebTool.from_credentials(CREDS).invoke({"query": "x"}))
-
-
-def test_enhance_error_code_in_a_200_body_is_an_error(serve):
-    serve(lambda r: httpx.Response(200, json={"errorCode": 500, "error": f"boom {TOKEN}"}))
-    with pytest.raises(DiffbotError, match="boom") as caught:
-        list(EnhanceEntityTool.from_credentials(CREDS).invoke({"entity_type": "Organization", "name": "Diffbot"}))
-    assert TOKEN not in str(caught.value)
 
 
 @pytest.mark.parametrize("value", ["abc", "4", "301", "-1"])

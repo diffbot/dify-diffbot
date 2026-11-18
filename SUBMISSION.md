@@ -114,7 +114,6 @@ New tool plugin for Diffbot. Seven tools:
 - Web search on llm.diffbot.com
 - Extract page on api.diffbot.com (auto or a specific page type)
 - Knowledge Graph search for organizations, people, and news
-- Enhance entity for one organization or person
 - Resolve entities in pasted text to Knowledge Graph ids
 
 Authentication is a Diffbot token (free at https://app.diffbot.com/get-started). Saving the credential calls the Account API. The plugin does not crawl, run raw DQL, or accept email, phone, or IP as inputs.
@@ -125,7 +124,7 @@ Authentication is a Diffbot token (free at https://app.diffbot.com/get-started).
 - [ ] Medium risk
 - [x] High risk
 
-Extract sends a user-supplied http(s) URL to Diffbot, which fetches that URL. People search, Enhance, and entity resolution handle personal data from public profiles and from text the user pastes (names, employers, locations, LinkedIn URLs). The submission rules say to pick the higher level when more than one could apply. Search-only peers have been accepted as low risk; this plugin does more than search, so it is marked high.
+Extract sends a user-supplied http(s) URL to Diffbot, which fetches that URL. People search and entity resolution handle personal data from public profiles and from text the user pastes (names, employers, locations, LinkedIn URLs). The submission rules say to pick the higher level when more than one could apply. Search-only peers have been accepted as low risk; this plugin does more than search, so it is marked high.
 
 ## Required checks
 
@@ -141,9 +140,9 @@ Extract sends a user-supplied http(s) URL to Diffbot, which fetches that URL. Pe
 
 ## Security and privacy notes
 
-- Input constraints and security boundaries: outbound hosts are only api.diffbot.com, kg.diffbot.com, llm.diffbot.com, and nl.diffbot.com. The user cannot pass a raw URL for the plugin to request, and cannot pass raw DQL. Extract rejects non-http(s) URLs, URLs with userinfo, and literal local, private, or link-local hosts. Timeouts are 15 to 45 seconds. Result counts are capped (10 search rows, 3 enhance matches, 20,000 characters of text). Errors are rewritten so the token is not returned. Email and phone fields are dropped from Knowledge Graph records before they reach the model.
+- Input constraints and security boundaries: outbound hosts are only api.diffbot.com, kg.diffbot.com, llm.diffbot.com, and nl.diffbot.com. The user cannot pass a raw URL for the plugin to request, and cannot pass raw DQL. Extract rejects non-http(s) URLs, URLs with userinfo, and literal local, private, or link-local hosts. Timeouts are 15 to 45 seconds. Result counts are capped (10 search rows, 20,000 characters of text). Errors are rewritten so the token is not returned. Email and phone fields are dropped from Knowledge Graph records before they reach the model.
 - Arbitrary URL fetching: Extract asks Diffbot to fetch one user-supplied public http(s) URL. The plugin itself only calls the four Diffbot hosts above. Scheme, userinfo, and literal private-host checks are described above.
-- Personal data: People search, Enhance, and entity resolution process names, public profile fields, and location text. They do not accept email, phone, or IP input. Outputs drop email and phone if the API includes them. The Knowledge Graph cannot be filtered by age, so a public profile of a minor could be returned; the privacy policy tells users not to send data about children.
+- Personal data: People search and entity resolution process names, public profile fields, and location text. They do not accept email, phone, or IP input. Outputs drop email and phone if the API includes them. The Knowledge Graph cannot be filtered by age, so a public profile of a minor could be returned; the privacy policy tells users not to send data about children.
 - Financial data: Organization search can return public revenue and headcount figures. It does not move money.
 - No command execution, code execution, shell, SQL against a customer database, SSH/SFTP, file operations, or browser automation.
 - Queries, URLs, and pasted text are sent to Diffbot over HTTPS. The plugin does not store them. See PRIVACY.md and https://www.diffbot.com/company/privacy.
@@ -162,7 +161,7 @@ Validator: exit code 0, blocking failures 0. package_contents, package_secrets, 
 
 Unit tests: `pytest` 31 passed (mocked HTTP). Plugin start-up: `validator/test-plugin-install.py` with `INSTALL_METHOD=serverless` succeeded.
 
-Live smoke test against the Diffbot API on 10 November 2026, calling each tool class directly with a real token: credential check, web search, extract, organization search, people search, news search (newest first), enhance, and entity resolution all returned results.
+Live smoke test against the Diffbot API on 10 November 2026, calling each tool class directly with a real token: credential check, web search, extract, organization search, people search, news search (newest first), and entity resolution all returned results.
 
 ## Reviewer notes
 
@@ -219,11 +218,11 @@ A third-party write-up of Marketplace tool installs on 16 October 2026 put Tavil
 
 ## v1 tool choice
 
-`diffbot-mcp` tools on 9 November 2026: `extract`, `search_web`, `crawl`, `resolve_entities`, `search_news`, `search_organizations`, `search_people`, `search_places`, `search_deals`, `dql`, `dql_probe`, `dql_ontology`. The October 2026 changelog removed MCP `enhance` in favor of `resolve_entities` plus the typed searches. The Enhance HTTP API is still documented at `https://kg.diffbot.com/kg/v3/enhance`.
+`diffbot-mcp` tools on 9 November 2026: `extract`, `search_web`, `crawl`, `resolve_entities`, `search_news`, `search_organizations`, `search_people`, `search_places`, `search_deals`, `dql`, `dql_probe`, `dql_ontology`. The October 2026 changelog removed MCP `enhance` in favor of `resolve_entities` plus the typed searches. This plugin does not expose Enhance, which matches the Diffbot Python SDK surface.
 
-v1 keeps the tools a Dify user already expects from Tavily or Firecrawl (search and extract) and adds the Knowledge Graph lookups that distinguish Diffbot (organizations, people, news, enhance, entity linking). It does not expose raw DQL, so a model cannot send an unbounded query. It does not start crawls, which are background jobs and a clearer "crawl arbitrary URLs" case. Places, deals, ontology browse, and hit-count probes can be a later version once v1 has been installed for real.
+v1 keeps the tools a Dify user already expects from Tavily or Firecrawl (search and extract) and adds the Knowledge Graph lookups that distinguish Diffbot (organizations, people, news, entity linking). It does not expose raw DQL, so a model cannot send an unbounded query. It does not start crawls, which are background jobs and a clearer "crawl arbitrary URLs" case. Places, deals, ontology browse, and hit-count probes can be a later version once v1 has been installed for real.
 
-Authentication matches the docs, with one exception. Extract, Account, DQL, Enhance, and Natural Language take `token` as a query parameter on `api.diffbot.com`, `kg.diffbot.com`, and `nl.diffbot.com`. Web Search on `llm.diffbot.com` is documented with `Authorization: Bearer`, and the plugin does that so the token is not written into the query string for that host.
+Authentication matches the docs, with one exception. Extract, Account, DQL, and Natural Language take `token` as a query parameter on `api.diffbot.com`, `kg.diffbot.com`, and `nl.diffbot.com`. Web Search on `llm.diffbot.com` is documented with `Authorization: Bearer`, and the plugin does that so the token is not written into the query string for that host.
 
 ## Results for the current package
 
@@ -262,7 +261,6 @@ Live smoke test, 10 November 2026, each tool class called directly with a real t
 [PASS] search_organizations (1.5s): text=Organization search returned 2 record(s) of 4. 1. Diffbot — Menlo Park, United States    diffbot.com    American machine learning and knowledge management company 2. ROS Mobile Robots — Feldkirch, Aus | json keys=['dql', 'hits', 'returned', 'results'] n=2 | first={"name": "Diffbot", "diffbotUri": "http://diffbot.com/entity/EYX1i02YVPsuT7fPLUYgRhQ"}
 [PASS] search_people (2.4s): employer "Diffbot" + title "CEO" -> 1 public profile (Diffbot's founder and CEO); grouped employments.{...} query
 [PASS] search_news (2.1s): text=News search returned 3 article(s) of 3552, newest publication date first. 1. Windows-Sicherheit: Microsoft stuft Family-Safety-App als veraltet ein (WinFuture.de — d2026-11-10T19:07)    https://winfut | json keys=['dql', 'hits', 'returned', 'results'] n=3 | first={"title": "Windows-Sicherheit: Microsoft stuft Family-Safety-App als veraltet ein", "date": "d2026-11-10T19:07", "pageUrl": "https://winfuture.de/news,162580.html"}
-[PASS] enhance_entity (2.0s): text=Enhance returned 1 organization match(es). 1. Diffbot (score 0.943500057890868)    diffbot.com    http://diffbot.com/entity/EYX1i02YVPsuT7fPLUYgRhQ | json keys=['hits', 'matches'] n=1 | first={"score": 0.943500057890868}
 [PASS] resolve_entities (1.8s): text=Resolved 4 entities from the supplied text. - Mike Tung [person] id=ESGMaGV9uP0SuTmfPTtNEoA - Menlo Park [location, administrative area, city] id=EQiAUr370NpW1gvx-V4fTrQ - Diffbot [organization] id=EY | json keys=['sentiment', 'entities', 'dql_filter'] n=4
 ```
 
@@ -279,15 +277,14 @@ Blockers before a real PR:
 
 Product and API risks:
 
-- Free tokens may not include Web Search, Knowledge Graph, Enhance, and Natural Language together. The Account API can succeed while a later call returns 401 or 403. The 10 November live test used one Diffbot token with all of them enabled; a free-plan token has not been tried.
+- Free tokens may not include Web Search, Knowledge Graph, and Natural Language together. The Account API can succeed while a later call returns 401 or 403. The 10 November live test used one Diffbot token with all of them enabled; a free-plan token has not been tried.
 - Organization industry is an exact category string. The MCP server resolves free text through the ontology. v1 will return empty results for "software" when the category is "Software Companies". Either document that sharply or add ontology resolution in a later version.
 - Job-title abbreviations are not expanded (`CEO` versus `Chief Executive Officer`). The MCP server does expand them. The tool description tells the model to try both forms, but people search can still under-count until expansion exists.
 - Web Search might also accept `token` as a query parameter. This plugin uses only the documented bearer header. If a token type rejects the header, the tool fails closed. That is a live test, not a guess to code around.
-- Enhance can spend more credits when `size` is above 1. The cap is 3. `refresh` and `search=true` are not exposed because they recrawl or do an extra web merge and are slow. Say that in support docs so customers do not expect them.
 
 Review and policy risks:
 
-- High risk is the honest box. A reviewer can still ask for a narrower tool set. Dropping Extract would remove user-supplied URL fetch, but people search would still be personal data. Dropping people, Enhance, and entity resolution would look more like Tavily and might be argued as medium, because the remaining URL fetch is still "user-provided URLs" in the medium definition and "proxy or crawl arbitrary URLs" in the high definition. The written rule is to choose the higher label. Do not mark this low because Exa did. Exa's PR text said it does not fetch arbitrary URLs. This plugin does ask Diffbot to fetch them.
+- High risk is the honest box. A reviewer can still ask for a narrower tool set. Dropping Extract would remove user-supplied URL fetch, but people search would still be personal data. Dropping people and entity resolution would look more like Tavily and might be argued as medium, because the remaining URL fetch is still "user-provided URLs" in the medium definition and "proxy or crawl arbitrary URLs" in the high definition. The written rule is to choose the higher label. Do not mark this low because Exa did. Exa's PR text said it does not fetch arbitrary URLs. This plugin does ask Diffbot to fetch them.
 - Diffbot's privacy policy says the service is not directed at anyone 18 or under, and gives parents a contact address for privacy requests. The Knowledge Graph can still return a public profile of a younger person, and this plugin cannot filter by age. Call that out in review rather than claiming the plugin is age-safe.
 - Dify Cloud customers will send workspace prompts to Diffbot. Whether that needs a DPA or a customer-facing subprocessors note is a Diffbot legal question. The plugin policy links Diffbot's policy and says the plugin itself stores nothing. It does not answer the Dify customer's contract question.
 - A merged PR might not produce a listing. Watch the Marketplace after merge, as Exa had to.

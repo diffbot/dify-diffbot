@@ -47,7 +47,6 @@ tools:
   - tools/search_news.yaml
   - tools/crawl_start.yaml
   - tools/crawl_jobs.yaml
-  - tools/enhance_entity.yaml
   - tools/resolve_entities.yaml
 extra:
   python:

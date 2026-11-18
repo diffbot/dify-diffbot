@@ -135,17 +135,6 @@ def trim_kg(data: dict[str, Any], kind: str, *, include_text: bool = False, limi
     }
 
 
-def trim_enhance(data: dict[str, Any], kind: str) -> dict[str, Any]:
-    matches = []
-    for item in (data.get("data") or [])[:5]:
-        if not isinstance(item, dict):
-            continue
-        entity = item.get("entity") if isinstance(item.get("entity"), dict) else {}
-        trimmed = trim_organization(entity) if kind == "Organization" else trim_person(entity)
-        matches.append({"score": item.get("score"), "entity": trimmed})
-    return {"hits": data.get("hits"), "matches": matches}
-
-
 def trim_extract(data: dict[str, Any]) -> dict[str, Any]:
     objects = data.get("objects")
     trimmed = []

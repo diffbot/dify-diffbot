@@ -19,7 +19,6 @@ The installable plugin is in [`diffbot/`](diffbot/). Its [README](diffbot/README
 | Search news | same DQL endpoint, newest publication date first via `sortBy:date` |
 | Start crawl | `GET https://api.diffbot.com/v3/crawl` (create only; returns a job name) |
 | Crawl jobs | list / status / results / **delete (destructive)** on `/v3/crawl` and `/v3/crawl/data` |
-| Enhance entity | `GET https://kg.diffbot.com/kg/v3/enhance` (plugin-side wrapper; not in the SDK) |
 | Resolve entities | `POST https://nl.diffbot.com/v1/` |
 
 Saving the credential checks `GET https://api.diffbot.com/v4/account?days=1`. Get a free token at [app.diffbot.com/get-started](https://app.diffbot.com/get-started).

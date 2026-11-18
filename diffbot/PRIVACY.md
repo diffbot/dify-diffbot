@@ -18,10 +18,9 @@ Every tool call leaves the Dify workspace and is processed by Diffbot Technologi
 | Search query, result count, snippet size | `llm.diffbot.com` Web Search | Run a web search. The token is sent as a bearer header. |
 | Page URL and page type | `api.diffbot.com` Extract | Fetch and structure one public page. Diffbot retrieves the URL. |
 | Names, homepages, categories, places, employee and revenue bounds, article phrases, publishers, dates | `kg.diffbot.com` DQL | Search the Knowledge Graph. |
-| Person or organization name, public URL, location text, employer, title | `kg.diffbot.com` Enhance | Match a Knowledge Graph record. |
 | Plain text from the user, up to 20,000 characters, and an optional language code | `nl.diffbot.com` | Recognize and link named entities. |
 
-The plugin does not offer parameters for email address, phone number, or IP address, including on Enhance, where the Diffbot API supports those fields. If a Knowledge Graph response still contains email or phone values, the plugin drops them before returning the tool result. It also drops article HTML and, unless the news tool is asked for an excerpt, article body text.
+The plugin does not offer parameters for email address, phone number, or IP address. If a Knowledge Graph response still contains email or phone values, the plugin drops them before returning the tool result. It also drops article HTML and, unless the news tool is asked for an excerpt, article body text.
 
 People and organization results can still contain personal data that is already public on the web: names, job titles, employers, cities, countries, homepage URLs, and LinkedIn profile URLs. Diffbot describes people in its index as search subjects whose information was published on publicly available sites. News results can quote public articles. Entity resolution can identify people named in text the user pasted.
 
