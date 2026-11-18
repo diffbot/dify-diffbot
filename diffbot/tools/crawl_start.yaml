@@ -27,8 +27,8 @@ parameters:
     label:
       en_US: Job name
     human_description:
-      en_US: Optional name (letters, digits, - _ .). Defaults to crawl-<timestamp>.
-    llm_description: Optional job name. Leave empty to auto-generate.
+      en_US: Optional name (letters, digits, - _ .; 30 characters maximum). Defaults to crawl-<timestamp>.
+    llm_description: Optional job name, at most 30 characters (letters, digits, - _ .). Leave empty to auto-generate.
   - name: max_to_crawl
     type: number
     required: false

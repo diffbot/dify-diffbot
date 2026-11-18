@@ -236,6 +236,21 @@ def test_crawl_start_guards_seeds(seeds):
         list(CrawlStartTool.from_credentials(CREDS).invoke({"seeds": seeds}))
 
 
+def test_crawl_start_rejects_job_names_over_30_characters(serve):
+    seen = serve(lambda r: httpx.Response(200, json={}))
+    with pytest.raises(DiffbotError, match="30 characters"):
+        list(CrawlStartTool.from_credentials(CREDS).invoke({"seeds": "example.org", "job_name": "j" * 31}))
+    assert seen == []
+    payload = _json(list(CrawlStartTool.from_credentials(CREDS).invoke({"seeds": "example.org", "job_name": "j" * 30})))
+    assert payload["job_name"] == "j" * 30
+
+
+def test_crawl_results_not_truncated_when_rows_fit(serve):
+    serve(lambda r: httpx.Response(200, json=[{"title": "a"}, {"title": "b"}]))
+    payload = _json(_jobs({"action": "results", "job_name": "j1", "limit": 2}))
+    assert payload["returned"] == 2 and payload["truncated"] is False
+
+
 def test_crawl_start_guards_api_url():
     with pytest.raises(DiffbotError, match="not allowed"):
         list(CrawlStartTool.from_credentials(CREDS).invoke({"seeds": "example.org", "api_url": "http://localhost/x"}))
@@ -265,7 +280,7 @@ def test_crawl_results_fall_back_to_the_data_endpoint_and_parse_csv(serve):
     payload = _json(_jobs({"action": "results", "job_name": "j1", "result_type": "urls", "limit": 1}))
     assert seen[0].url.path == "/v3/crawl/data"
     assert seen[0].url.params["type"] == "urls"
-    assert seen[0].url.params["num"] == "1"
+    assert seen[0].url.params["num"] == "2"  # one extra row detects truncation
     assert payload["returned"] == 1 and payload["truncated"] is True
     assert payload["results"][0]["Url"] == "https://a.example.org"
 

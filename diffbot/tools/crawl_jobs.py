@@ -14,6 +14,7 @@ from tools.shape import clip, summarize_lines
 
 ACTIONS = {"list", "status", "results", "delete"}
 RESULT_LIMIT = 1000
+DEFAULT_RESULT_LIMIT = 100  # matches the yaml default
 JOB_FIELDS = ("name", "jobStatus", "pageCrawlAttempts", "pageCrawlSuccesses", "pageProcessAttempts",
               "pageProcessSuccesses", "objectsFound", "urlsFound", "maxToCrawl", "maxToProcess")
 
@@ -54,14 +55,15 @@ class CrawlJobsTool(Tool):
             elif action == "results":
                 limit = int(
                     bounded_number(
-                        tool_parameters.get("limit") or RESULT_LIMIT,
+                        tool_parameters.get("limit") or DEFAULT_RESULT_LIMIT,
                         label="limit", minimum=1, maximum=RESULT_LIMIT, integer=True,
                     )
                 )
                 kind = optional_text(tool_parameters, "result_type").lower()
                 if kind not in ("", "urls"):
                     raise DiffbotError("result_type must be empty or urls.")
-                data = crawl_download(client, job_name, format="json", type=kind or None, num=limit)
+                # Ask for one extra row so "truncated" can be detected.
+                data = crawl_download(client, job_name, format="json", type=kind or None, num=limit + 1)
                 rows = data if isinstance(data, list) else [data]
                 kept = [{k: _cell(v) for k, v in row.items()} if isinstance(row, dict) else row for row in rows[:limit]]
                 payload = {

@@ -11,6 +11,8 @@ from tools.common import make_client, mapped_errors, messages, optional_text
 from tools.dql_builder import bounded_number
 from tools.sdk import crawl_start
 
+MAX_JOB_NAME = 30
+
 
 def _int(parameters: dict[str, Any], name: str, *, minimum: int, maximum: int) -> int | None:
     value = parameters.get(name)
@@ -37,8 +39,12 @@ class CrawlStartTool(Tool):
         kwargs: dict[str, Any] = {}
         name = optional_text(tool_parameters, "job_name")
         if name:
-            if not all(c.isalnum() or c in "-_." for c in name) or len(name) > 100:
-                raise DiffbotError("job_name may use letters, digits, '-', '_' and '.' (100 characters maximum).")
+            # The crawler rejects names over 30 characters with HTTP 200 + errorCode 505
+            # and creates nothing; diffbot 3.2.0 does not surface that, so check here.
+            if not all(c.isalnum() or c in "-_." for c in name) or len(name) > MAX_JOB_NAME:
+                raise DiffbotError(
+                    f"job_name may use letters, digits, '-', '_' and '.' ({MAX_JOB_NAME} characters maximum)."
+                )
             kwargs["job_name"] = name
         for param, key, low, high in (
             ("max_to_crawl", "max_to_crawl", 1, 10000),
