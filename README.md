@@ -39,7 +39,7 @@ pytest -q
 
 `diffbot/requirements.txt` pins `diffbot==3.4.0`, which is on PyPI. `requirements-dev.txt` does not contain a machine-local path.
 
-The tests serve every request from `httpx.MockTransport` and make no Diffbot calls. The wiring tests run against the SDK as installed and against a copy with the 3.3.0 methods removed, which covers the plugin's `client.request()` fallbacks (`verify_token`, `crawl_download`, extract options).
+The tests serve every request from `httpx.MockTransport` and make no Diffbot calls. The wiring tests run against the pinned SDK (`diffbot==3.4.0`) and its native `verify_token`, `crawl_download`, and extract options.
 
 GitHub CI (`.github/workflows/test.yml`) installs `diffbot/requirements.txt`, including `diffbot==3.4.0`, and runs the full suite.
 

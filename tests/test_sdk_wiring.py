@@ -1,4 +1,4 @@
-"""SDK wiring: credential check, host guard, extract options, crawl tools, feature detection.
+"""SDK wiring: credential check, host guard, extract options, crawl tools.
 
 All HTTP is served by httpx.MockTransport; no live Diffbot calls.
 """
@@ -21,22 +21,6 @@ from tools.search_web import SearchWebTool
 
 TOKEN = "a" * 32
 CREDS = {"diffbot_token": TOKEN}
-
-
-@pytest.fixture(autouse=True, params=["native", "legacy"])
-def sdk_flavor(request, monkeypatch):
-    """Run every test against the SDK as installed (3.3.0 methods) and against an SDK
-    without them, which exercises the plugin's client.request() fallbacks."""
-    if request.param == "legacy":
-        monkeypatch.delattr(Diffbot, "verify_token")
-        monkeypatch.delattr(Diffbot, "crawl_download")
-        real_extract = Diffbot.extract
-
-        def old_extract(self, url, api="analyze", fmt="markdown"):
-            return real_extract(self, url, api, fmt)
-
-        monkeypatch.setattr(Diffbot, "extract", old_extract)
-    return request.param
 
 
 @pytest.fixture
@@ -98,14 +82,6 @@ def test_request_timeout_is_validated(value):
 def test_request_timeout_is_applied():
     client = sdk.make_client({**CREDS, "request_timeout": "45"})
     assert client._http.timeout.read == 45.0  # test-only peek at the httpx client
-
-
-def test_native_verify_token_is_preferred():
-    class Fake:
-        def verify_token(self):
-            return False
-
-    assert sdk.verify_token(Fake()) is False  # type: ignore[arg-type]
 
 
 # ------------------------------------------------------------ host guard
@@ -300,7 +276,7 @@ def test_crawl_jobs_status_for_missing_job(serve):
         _jobs({"action": "status", "job_name": "nope"})
 
 
-def test_crawl_results_fall_back_to_the_data_endpoint_and_parse_csv(serve):
+def test_crawl_url_report_reads_the_data_endpoint_and_parses_csv(serve):
     csv_text = 'Url,Crawl Status\nhttps://a.example.org,Success\nhttps://b.example.org,Success\n'
     seen = serve(lambda r: httpx.Response(200, text=csv_text))
     payload = _json(_jobs({"action": "results", "job_name": "j1", "result_type": "urls", "limit": 1}))
@@ -309,16 +285,6 @@ def test_crawl_results_fall_back_to_the_data_endpoint_and_parse_csv(serve):
     assert seen[0].url.params["num"] == "2"  # one extra row detects truncation
     assert payload["returned"] == 1 and payload["truncated"] is True
     assert payload["results"][0]["Url"] == "https://a.example.org"
-
-
-def test_crawl_results_use_native_crawl_download_when_available():
-    class Fake:
-        token = TOKEN
-
-        def crawl_download(self, name, *, format="json", type=None, num=None):
-            return httpx.Response(200, json=[{"title": "t"}])
-
-    assert sdk.crawl_download(Fake(), "j", num=5) == [{"title": "t"}]  # type: ignore[arg-type]
 
 
 def test_crawl_download_job_error_shows_the_reason(serve):
