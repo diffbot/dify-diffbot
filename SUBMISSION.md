@@ -69,10 +69,10 @@ The `enhance_entity` tool was removed (commit 7323b7b) so the tool set matches t
 ### Dependencies and transport
 
 - `dify_plugin==0.11.0`.
-- `diffbot==3.4.0`, the official Diffbot Python SDK. **Not pinned yet**: it goes into `requirements.txt` and `pyproject.toml` once 3.4.0 is on PyPI. Until then the tests run against a local editable checkout.
+- `diffbot==3.4.0`, the official Diffbot Python SDK, pinned in `diffbot/requirements.txt` and `diffbot/pyproject.toml`. It is not on PyPI yet, so tests install a local checkout and that path is not committed. `requirements-dev.txt` has no machine-local path.
 - `httpx` is the HTTP client. It comes in through the SDK (`httpx>=0.27.0`, along with the SDK's `click` and `rich`) and is not pinned directly by the plugin. `requests` is gone: it is no longer imported or listed, and the old `requests==2.34.2` pin was dropped.
 - Every SDK call goes through `GuardedTransport` (`tools/sdk.py`). It is an httpx transport that refuses non-http(s) schemes and loopback, private, link-local, reserved, multicast, `localhost`, `*.local`/`*.internal`, and cloud-metadata hosts before a socket opens. The guard is always on; there is no credential to turn it off, and the plugin does not support self-hosted gateways or custom base URLs. It also honors `HTTP(S)_PROXY`/`ALL_PROXY`/`NO_PROXY` like the old `requests` client did, so proxied Dify deployments still work.
-- Calls the SDK does not have yet go through the SDK's public `client.request()`, never its private attributes: token verification (`GET /v4/account?days=1`), crawl data download, and extract options. Each one feature-detects the native SDK method and uses it when present.
+- Token verification, crawl data download, and extract options call the native SDK methods when they exist (`verify_token`, `crawl_download`, and `extract` options, all in 3.4.0) and otherwise use public `client.request()`. They never touch private attributes. Those fallbacks stay until the marketplace pull request removes them.
 - The SDK sends the token as a `token` query parameter to api, kg, and nl.diffbot.com, and as `Authorization: Bearer` to llm.diffbot.com (Web Search). Errors are mapped to plugin-safe text and the token is redacted from them.
 
 ### Credential fields
