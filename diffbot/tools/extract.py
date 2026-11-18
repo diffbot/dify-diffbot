@@ -61,10 +61,8 @@ def _extract_options(parameters: dict[str, Any]) -> dict[str, Any]:
             number = bounded_number(value, label=name, minimum=low, maximum=high, integer=integer)
             options[name] = int(number) if integer else float(number)
     for name in _BOOLEANS:
-        value = parameters.get(name)
-        if isinstance(value, bool):
-            if value:
-                options[name] = True  # false is the API default, so only send true
+        if parameters.get(name) is True:
+            options[name] = True  # false is the API default, so only send true
     natural = [part for part in optional_text(parameters, "natural_language").replace(" ", "").split(",") if part]
     if natural:
         bad = [part for part in natural if part not in NATURAL_LANGUAGE]
