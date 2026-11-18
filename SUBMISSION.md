@@ -1,6 +1,6 @@
 # Publishing the Diffbot plugin to the Dify Marketplace
 
-This is the runbook for publishing the plugin from the Diffbot organization. The source is public at https://github.com/diffbot/dify-diffbot. The plugin described here is the `feat/sdk-3.x-wiring` branch: eight tools, including crawl, built on the `diffbot` Python SDK (pinned to `diffbot==3.4.0rc0` for CI verification; switch to `==3.4.0` before the marketplace PR) and httpx instead of `requests`. As of 17 November 2026 no pull request has been opened against `langgenius/dify-plugins`, and this version has not been installed in Dify Community Edition or Dify Cloud. It also has not been through the marketplace validator yet. `diffbot` 3.4.0rc0 is on PyPI and is what this branch pins for CI. The marketplace package still needs the stable `3.4.0` pin before that PR is opened. Every validator result in this file that depends on that is marked `TODO(sdk-release): rerun marketplace validator`. The pre-SDK v0.1 results that used to be here no longer describe this package and have been removed.
+This is the runbook for publishing the plugin from the Diffbot organization. The source is public at https://github.com/diffbot/dify-diffbot. The plugin described here is the `feat/sdk-3.x-wiring` branch: eight tools, including crawl, built on the `diffbot` Python SDK (pinned to `diffbot==3.4.0`) and httpx instead of `requests`. As of 17 November 2026 no pull request has been opened against `langgenius/dify-plugins`, and this version has not been installed in Dify Community Edition or Dify Cloud. It also has not been through the marketplace validator yet. `diffbot` 3.4.0 was published to PyPI on 18 November 2026. Every validator result in this file that depends on that is marked `TODO(sdk-release): rerun marketplace validator`. The pre-SDK v0.1 results that used to be here no longer describe this package and have been removed.
 
 
 Checked on 9 November 2026 against:
@@ -30,7 +30,7 @@ Done:
 
 Still to do:
 
-1. **Release `diffbot` 3.4.0 to PyPI.** This branch currently pins `diffbot==3.4.0rc0` in `diffbot/requirements.txt` and `diffbot/pyproject.toml` so GitHub CI can install the release candidate. Switch the pin to `==3.4.0` before the marketplace pull request. `requirements-dev.txt` has no editable checkout path. Still delete the feature-detect fallbacks in `diffbot/tools/sdk.py` that 3.4.0 makes unnecessary (`verify_token`, `crawl_download`, extract options) before the marketplace pull request. Do not open that marketplace PR until the SDK is on PyPI and the validator has been rerun.
+1. **Release `diffbot` 3.4.0 to PyPI.** The repo already pins `diffbot==3.4.0` in `diffbot/requirements.txt` and `diffbot/pyproject.toml`, and `requirements-dev.txt` no longer has an editable checkout path. Still delete the feature-detect fallbacks in `diffbot/tools/sdk.py` that 3.4.0 makes unnecessary (`verify_token`, `crawl_download`, extract options) before the marketplace pull request. Do not open that marketplace PR until the SDK is on PyPI and the validator has been rerun.
 2. **TODO(sdk-release): rerun marketplace validator.** Repackage, record the new checksum, and run the toolkit validator with `--pr-body-file` and the OSV lookup. Fill in the "Local validation" and "Results for the current package" sections below with what it reports.
 3. **Rerun the live smoke test, including crawl.** The 10 November 2026 live run was against the pre-SDK package and did not cover crawl. Run every tool against the real API, including `crawl_start` → `crawl_jobs` status → results → delete on a small job whose name is 30 characters or fewer.
 4. Install the `.difypkg` on current Dify Community Edition and on Dify Cloud and record the version and result in the PR. The checklist asks for that test or a written limitation. Remote debugging (`python -m main` with a debug key from the Dify plugin page) is the quickest path.
@@ -69,7 +69,7 @@ The `enhance_entity` tool was removed (commit 7323b7b) so the tool set matches t
 ### Dependencies and transport
 
 - `dify_plugin==0.11.0`.
-- `diffbot==3.4.0rc0`, the official Diffbot Python SDK release candidate, pinned in `diffbot/requirements.txt` and `diffbot/pyproject.toml` for CI. Switch to `==3.4.0` for the marketplace package. `requirements-dev.txt` has no machine-local path.
+- `diffbot==3.4.0`, the official Diffbot Python SDK, pinned in `diffbot/requirements.txt` and `diffbot/pyproject.toml`. It is on PyPI (published 18 November 2026). `requirements-dev.txt` has no machine-local path.
 - `httpx` is the HTTP client. It comes in through the SDK (`httpx>=0.27.0`, along with the SDK's `click` and `rich`) and is not pinned directly by the plugin. `requests` is gone: it is no longer imported or listed, and the old `requests==2.34.2` pin was dropped.
 - Every SDK call goes through `GuardedTransport` (`tools/sdk.py`). It is an httpx transport that refuses non-http(s) schemes and loopback, private, link-local, reserved, multicast, `localhost`, `*.local`/`*.internal`, and cloud-metadata hosts before a socket opens. The guard is always on; there is no credential to turn it off, and the plugin does not support self-hosted gateways or custom base URLs. It also honors `HTTP(S)_PROXY`/`ALL_PROXY`/`NO_PROXY` like the old `requests` client did, so proxied Dify deployments still work.
 - Token verification, crawl data download, and extract options call the native SDK methods when they exist (`verify_token`, `crawl_download`, and `extract` options, all in 3.4.0) and otherwise use public `client.request()`. They never touch private attributes. Those fallbacks stay until the marketplace pull request removes them.
@@ -97,7 +97,7 @@ The plugin process only talks to these four hosts. Neither credentials nor param
 
 ## Package the file they will attach
 
-From a checkout of the plugin, after the SDK pin is set, with the Dify plugin CLI (the v0.1 run used `dify-plugin-linux-amd64` 0.6.15; record the version you use):
+From a checkout of the plugin, after `diffbot==3.4.0` is pinned, with the Dify plugin CLI (the v0.1 run used `dify-plugin-linux-amd64` 0.6.15; record the version you use):
 
 ```bash
 dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
@@ -172,7 +172,7 @@ Fill this in from the live template. Keep every section. Check exactly one risk 
 
 ## What changed
 
-New tool plugin for Diffbot, built on the official Diffbot Python SDK (`diffbot==3.4.0rc0` on this branch; `==3.4.0` for the marketplace). Eight tools:
+New tool plugin for Diffbot, built on the official Diffbot Python SDK (`diffbot==3.4.0`). Eight tools:
 
 - Web search on llm.diffbot.com
 - Extract a page on api.diffbot.com (auto or a specific page type)
@@ -227,7 +227,7 @@ python3 validator/validate-difypkg.py dist/diffbot-0.1.0.difypkg --output-dir ./
 Checksum: TODO(sdk-release): rerun marketplace validator.
 
 Validator: TODO(sdk-release): rerun marketplace validator. Report exit code, blocking failures, and each check, especially:
-- dependency_vulnerabilities: expected pins are `dify_plugin==0.11.0` and `diffbot==3.4.0rc0` (switch to `==3.4.0` for the marketplace). Record what OSV reports, including transitive `httpx`.
+- dependency_vulnerabilities: expected pins are `dify_plugin==0.11.0` and `diffbot==3.4.0`. Record what OSV reports, including transitive `httpx`.
 - access_domains: expected hosts are only api.diffbot.com, kg.diffbot.com, llm.diffbot.com, and nl.diffbot.com. The base URLs now sit inside the SDK, so record what the static scan actually finds.
 - python_safety: record the result for the new SDK/httpx code (`tools/sdk.py`, crawl tools).
 

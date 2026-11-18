@@ -1,4 +1,3 @@
 # Dev/test requirements. Not a second pin: the SDK comes from diffbot/requirements.txt.
-# SDK pin is in diffbot/requirements.txt (currently the 3.4.0rc0 verification pin).
 -r diffbot/requirements.txt
 pytest
