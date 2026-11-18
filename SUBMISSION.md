@@ -1,6 +1,6 @@
 # Publishing the Diffbot plugin to the Dify Marketplace
 
-This is the runbook for publishing the plugin from the Diffbot organization. The source is public at https://github.com/diffbot/dify-diffbot. The plugin described here is the `feat/sdk-3.x-wiring` branch: eight tools, including crawl, built on the `diffbot` Python SDK (pinned to `diffbot==3.4.0`) and httpx instead of `requests`. As of 17 November 2026 no pull request has been opened against `langgenius/dify-plugins`, and this version has not been installed in Dify Community Edition or Dify Cloud. It also has not been through the marketplace validator yet. `diffbot` 3.4.0 was published to PyPI on 18 November 2026. Every validator result in this file that depends on that is marked `TODO(sdk-release): rerun marketplace validator`. The pre-SDK v0.1 results that used to be here no longer describe this package and have been removed.
+This is the runbook for publishing the plugin from the Diffbot organization. The source is public at https://github.com/diffbot/dify-diffbot. The plugin described here is the `feat/sdk-3.x-wiring` branch: eight tools, including crawl, built on the `diffbot` Python SDK (pinned to `diffbot==3.4.0`) and httpx instead of `requests`. As of 18 November 2026 no pull request has been opened against `langgenius/dify-plugins`, and this version has not been installed in Dify Community Edition or Dify Cloud. `diffbot` 3.4.0 was published to PyPI on 18 November 2026. The same day the SDK feature-detect fallbacks were removed, the package was rebuilt, and the marketplace validator was rerun on it: 0 blocking failures (results below). The live smoke test against the real API has not been rerun yet. The pre-SDK v0.1 results that used to be here no longer describe this package and have been removed.
 
 
 Checked on 9 November 2026 against:
@@ -26,17 +26,17 @@ Done:
 - Contact: `support@diffbot.com` in `manifest.yaml`, the plugin README, PRIVACY.md, and the PR body.
 - Icon: `_assets/icon.png` is the official 2026 Diffbot logomark, the green rounded-square tile (512×512 PNG).
 - `meta.minimum_dify_version`: 1.14.0. The dify_plugin 0.11.0 README lists Dify 1.14.0 for SDK 0.8.1 and later. The plugin uses no later gated feature (OAuth, dynamic-select, multiple selects, reset_on_change).
-- Unit tests: `pytest` reports 109 passed on 17 November 2026, with mocked HTTP, against `diffbot` 3.4.0. GitHub CI installs that pin from PyPI.
+- Unit tests: `pytest` with mocked HTTP, run by GitHub CI against `diffbot==3.4.0` from PyPI.
+- `diffbot` 3.4.0 is on PyPI (18 November 2026) and pinned. The feature-detect fallbacks in `diffbot/tools/sdk.py` (`verify_token`, `crawl_download`, extract options) and the local TypedDicts in `tools/sdk_types.py` are gone; the plugin calls the native 3.4.0 methods.
+- Marketplace validator rerun on the rebuilt package on 18 November 2026: exit 0, 0 blocking failures, serverless start-up test passed. See "Results for the current package".
 
 Still to do:
 
-1. **Release `diffbot` 3.4.0 to PyPI.** The repo already pins `diffbot==3.4.0` in `diffbot/requirements.txt` and `diffbot/pyproject.toml`, and `requirements-dev.txt` no longer has an editable checkout path. Still delete the feature-detect fallbacks in `diffbot/tools/sdk.py` that 3.4.0 makes unnecessary (`verify_token`, `crawl_download`, extract options) before the marketplace pull request. Do not open that marketplace PR until the SDK is on PyPI and the validator has been rerun.
-2. **TODO(sdk-release): rerun marketplace validator.** Repackage, record the new checksum, and run the toolkit validator with `--pr-body-file` and the OSV lookup. Fill in the "Local validation" and "Results for the current package" sections below with what it reports.
-3. **Rerun the live smoke test, including crawl.** The 10 November 2026 live run was against the pre-SDK package and did not cover crawl. Run every tool against the real API, including `crawl_start` → `crawl_jobs` status → results → delete on a small job whose name is 30 characters or fewer.
-4. Install the `.difypkg` on current Dify Community Edition and on Dify Cloud and record the version and result in the PR. The checklist asks for that test or a written limitation. Remote debugging (`python -m main` with a debug key from the Dify plugin page) is the quickest path.
-5. **Update `diffbot/PRIVACY.md` for crawl.** Its "What is sent to Diffbot" table has no rows for seed URLs, crawl patterns, custom headers, or crawl results, and it does not say that crawl jobs and their data stay in the user's Diffbot account until someone deletes them. The privacy text has to match the package before submission.
-7. Confirm that Diffbot is fine with its logo on the Dify Marketplace listing. Reviewers can ask for proof of the right to use a mark.
-8. Have someone at Diffbot read `diffbot/PRIVACY.md` against the current Diffbot privacy policy and terms: user queries, page URLs, crawl seeds, and pasted text are sent to Diffbot, and organization, people, and news results can include personal data already on the public web.
+1. **Rerun the live smoke test, including crawl.** Needs a real Diffbot token (none was available when the validator was rerun). The 10 November 2026 live run was against the pre-SDK package and did not cover crawl. Run every tool against the real API, including `crawl_start` → `crawl_jobs` status → results → delete on a small job whose name is 30 characters or fewer.
+2. Install the `.difypkg` on current Dify Community Edition and on Dify Cloud and record the version and result in the PR. The checklist asks for that test or a written limitation. Remote debugging (`python -m main` with a debug key from the Dify plugin page) is the quickest path.
+3. **Update `diffbot/PRIVACY.md` for crawl.** Its "What is sent to Diffbot" table has no rows for seed URLs, crawl patterns, custom headers, or crawl results, and it does not say that crawl jobs and their data stay in the user's Diffbot account until someone deletes them. The privacy text has to match the package before submission.
+4. Confirm that Diffbot is fine with its logo on the Dify Marketplace listing. Reviewers can ask for proof of the right to use a mark.
+5. Have someone at Diffbot read `diffbot/PRIVACY.md` against the current Diffbot privacy policy and terms: user queries, page URLs, crawl seeds, and pasted text are sent to Diffbot, and organization, people, and news results can include personal data already on the public web.
 
 ## What the plugin is now
 
@@ -72,7 +72,7 @@ The `enhance_entity` tool was removed (commit 7323b7b) so the tool set matches t
 - `diffbot==3.4.0`, the official Diffbot Python SDK, pinned in `diffbot/requirements.txt` and `diffbot/pyproject.toml`. It is on PyPI (published 18 November 2026). `requirements-dev.txt` has no machine-local path.
 - `httpx` is the HTTP client. It comes in through the SDK (`httpx>=0.27.0`, along with the SDK's `click` and `rich`) and is not pinned directly by the plugin. `requests` is gone: it is no longer imported or listed, and the old `requests==2.34.2` pin was dropped.
 - Every SDK call goes through `GuardedTransport` (`tools/sdk.py`). It is an httpx transport that refuses non-http(s) schemes and loopback, private, link-local, reserved, multicast, `localhost`, `*.local`/`*.internal`, and cloud-metadata hosts before a socket opens. The guard is always on; there is no credential to turn it off, and the plugin does not support self-hosted gateways or custom base URLs. It also honors `HTTP(S)_PROXY`/`ALL_PROXY`/`NO_PROXY` like the old `requests` client did, so proxied Dify deployments still work.
-- Token verification, crawl data download, and extract options call the native SDK methods when they exist (`verify_token`, `crawl_download`, and `extract` options, all in 3.4.0) and otherwise use public `client.request()`. They never touch private attributes. Those fallbacks stay until the marketplace pull request removes them.
+- Token verification, crawl data download, and extract options call the native SDK methods (`verify_token`, `crawl_download`, and `extract` options, all in 3.4.0). The old `client.request()` fallbacks were removed on 18 November 2026.
 - The SDK sends the token as a `token` query parameter to api, kg, and nl.diffbot.com, and as `Authorization: Bearer` to llm.diffbot.com (Web Search). Errors are mapped to plugin-safe text and the token is redacted from them.
 
 ### Credential fields
@@ -97,7 +97,7 @@ The plugin process only talks to these four hosts. Neither credentials nor param
 
 ## Package the file they will attach
 
-From a checkout of the plugin, after `diffbot==3.4.0` is pinned, with the Dify plugin CLI (the v0.1 run used `dify-plugin-linux-amd64` 0.6.15; record the version you use):
+From a checkout of the plugin, with the Dify plugin CLI (the 18 November 2026 run used `dify` v0.6.15, the same as the v0.1 run):
 
 ```bash
 dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
@@ -105,7 +105,7 @@ dify plugin checksum dist/diffbot-0.1.0.difypkg
 python3 validator/validate-difypkg.py dist/diffbot-0.1.0.difypkg --output-dir ./validation-report
 ```
 
-The validator lives in [langgenius/dify-marketplace-toolkit](https://github.com/langgenius/dify-marketplace-toolkit). Exit code 0 means no blocking package errors. Warnings still need an explanation in the PR. The PR body below has `TODO(sdk-release)` placeholders where the new run's summary goes.
+The validator lives in [langgenius/dify-marketplace-toolkit](https://github.com/langgenius/dify-marketplace-toolkit) (it needs `yq` on `PATH`). Exit code 0 means no blocking package errors. Warnings still need an explanation in the PR. The PR body below already carries the 18 November 2026 run's results.
 
 `dify plugin package` produces an unsigned archive. Dify signs marketplace packages after merge. A third-party signature is only for Community Edition installs outside the marketplace:
 
@@ -152,7 +152,7 @@ Later versions add a new file such as `diffbot/diffbot/diffbot-0.2.0.difypkg` an
 
 ## PR body to paste
 
-Fill this in from the live template. Keep every section. Check exactly one risk box: none, or more than one, gets the `risk: missing` label. Do not paste it as-is. Every `TODO(sdk-release)` line has to be replaced with real results first.
+Fill this in from the live template. Keep every section. Check exactly one risk box: none, or more than one, gets the `risk: missing` label. Do not paste it as-is. The live smoke test and the Community Edition / Cloud install lines are still `PENDING` and have to be replaced with real results first. If the package is rebuilt, rerun the validator and update the checksum.
 
 ````markdown
 # Plugin Submission
@@ -219,21 +219,22 @@ Extract and crawl both send user-supplied http(s) URLs to Diffbot, and Diffbot f
 ## Local validation
 
 ```text
-dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg   # dify CLI <version>
+dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg   # dify CLI v0.6.15
 dify plugin checksum dist/diffbot-0.1.0.difypkg
 python3 validator/validate-difypkg.py dist/diffbot-0.1.0.difypkg --output-dir ./validation-report --pr-body-file pr-body.md
 ```
 
-Checksum: TODO(sdk-release): rerun marketplace validator.
+Checksum (`dify plugin checksum`): `7c9012578f4a2a98b02b0693fe484962de3305620dd0fb63b2de165bb85e3e91`. Archive: 48,816 bytes, 32 files.
 
-Validator: TODO(sdk-release): rerun marketplace validator. Report exit code, blocking failures, and each check, especially:
-- dependency_vulnerabilities: expected pins are `dify_plugin==0.11.0` and `diffbot==3.4.0`. Record what OSV reports, including transitive `httpx`.
-- access_domains: expected hosts are only api.diffbot.com, kg.diffbot.com, llm.diffbot.com, and nl.diffbot.com. The base URLs now sit inside the SDK, so record what the static scan actually finds.
-- python_safety: record the result for the new SDK/httpx code (`tools/sdk.py`, crawl tools).
+Validator (dify-marketplace-toolkit `83ee707`): exit 0, 0 blocking failures, 0 execution failures. All 12 checks PASS: package_contents, package_secrets, package_binaries, manifest_metadata, readme_metadata, package_dependencies, python_compile, sensitive_capabilities (blocking), and python_safety, prohibited_financial_activity, access_domains, dependency_vulnerabilities (warning). Warnings, explained:
+- dependency_vulnerabilities: `requirements.txt` has 2 pinned, 0 unpinned (`dify_plugin==0.11.0`, `diffbot==3.4.0`). OSV reports no known vulnerabilities in the pinned set.
+- access_domains: "manifest declares network.domains but the static scan found no literal hostname; this is expected for SDK-based plugins." The Diffbot base URLs live inside the `diffbot` SDK. The plugin cannot change them, and the four declared hosts are the only ones the SDK calls.
+- package_secrets: `tools/sdk.py` `INVALID_TOKEN` was flagged for review. It is the error text "Invalid or unauthorized Diffbot token.", not a secret.
+- python_safety: `tools/sdk.py` returns or raises values that may contain credentials (the `Diffbot(...)` client built with the user's token, and error messages). Every error string passes through `redact(..., token)` first, and the client object never reaches tool output.
 
-Unit tests: `pytest` 109 passed (mocked HTTP). Plugin start-up (`validator/test-plugin-install.py`, `INSTALL_METHOD=serverless`): TODO(sdk-release): rerun marketplace validator.
+Unit tests: `pytest` with mocked HTTP, green in GitHub CI on `diffbot==3.4.0`. Plugin start-up (`validator/test-plugin-install.py`, `INSTALL_METHOD=serverless`): success ("Serving Flask app", request to port 8080 succeeded).
 
-Live smoke test: TODO(sdk-release): rerun every tool, including a crawl start/status/results/delete cycle, against the Diffbot API with a real token.
+Live smoke test: PENDING. Rerun every tool, including a crawl start/status/results/delete cycle, against the Diffbot API with a real token.
 
 ## Reviewer notes
 
@@ -300,24 +301,19 @@ The SDK handles authentication as the API docs describe. Extract, Account, Crawl
 
 ## Results for the current package
 
-Unit tests, no network, 17 November 2026, against a local editable checkout of the unreleased SDK:
+Unit tests: no network, mocked HTTP, run by GitHub CI against `diffbot==3.4.0` from PyPI. They now cover only the native SDK methods; the "legacy SDK" parametrization went away with the fallbacks.
 
-```text
-pytest
-109 passed
-```
+Package, 18 November 2026, `dify` CLI v0.6.15, built from the commit that removed the fallbacks: `dist/diffbot-0.1.0.difypkg`, 48,816 bytes, 32 files, sha256 `018d6e6a7951cb1dd033ff6fcb1f2f36734fc7c543f6fb6fe6faf0d6ba74267e`, `dify plugin checksum` `7c9012578f4a2a98b02b0693fe484962de3305620dd0fb63b2de165bb85e3e91`. Contents: `manifest.yaml`, `main.py`, `requirements.txt`, `pyproject.toml`, `README.md`, `PRIVACY.md`, `_assets/icon.png`, `provider/` (`__init__.py`, `diffbot.py`, `diffbot.yaml`), eight tool YAML/Python pairs, and the shared modules `tools/__init__.py`, `client.py`, `common.py`, `sdk.py`, `dql_builder.py`, `shape.py`. No `.env`, `__pycache__`, tests, or `dist/`. `.env.example` stays in git for remote debugging, and `.difyignore` keeps it out of the package. `dist/` is not tracked in git.
 
-Package, checksum, archive size and file list: **TODO(sdk-release): rerun marketplace validator.** The package should hold the manifest, provider, eight tool YAML/Python pairs, the shared modules (`client.py`, `common.py`, `sdk.py`, `sdk_types.py`, `dql_builder.py`, `shape.py`), README, PRIVACY.md, icon, `main.py`, `requirements.txt`, and `pyproject.toml`. Check the real archive against that list. `.env.example` stays in git for remote debugging and `.difyignore` keeps it out of the package. `dist/` is not tracked in git.
+Marketplace toolkit validator (`langgenius/dify-marketplace-toolkit` at `83ee707`, run with `--pr-body-file` on the PR body above): exit 0, 0 blocking failures, 4 warning categories (each one is explained in the PR body's "Local validation" section), 0 execution failures. sensitive_capabilities passed against the PR body. Serverless start-up test: success. The pre-SDK v0.1 numbers (31 tests, checksum `6abed6eb…`, `requests==2.34.2`) describe a different package. Do not reuse them.
 
-Marketplace toolkit validator: **TODO(sdk-release): rerun marketplace validator.** The pre-SDK v0.1 numbers that used to be here (31 tests, checksum `6abed6eb…`, `requests==2.34.2` with no known vulnerabilities, a four-host access_domains scan of the plugin's own code, a python_safety pass) were measured on a different dependency set and code path. Do not reuse them. Record dependency_vulnerabilities, access_domains, python_safety, the PR-body checks, and the serverless start-up test from the new run.
-
-Live smoke test: **TODO(sdk-release): rerun.** The 10 November 2026 run covered the pre-SDK package (credential check, web search, extract, organization, people, and news search, and entity resolution). It did not cover crawl. Two behaviors it settled are still in the code. News uses `sortBy:date` (newest first). People search groups employer and title as `employments.{employer.name:"..." title:"..."}` so both clauses must match the same job. Recheck both in the new run.
+Live smoke test: **PENDING.** It needs a real Diffbot token, and none was available when the validator was rerun. The 10 November 2026 run covered the pre-SDK package (credential check, web search, extract, organization, people, and news search, and entity resolution). It did not cover crawl. Two behaviors it settled are still in the code. News uses `sortBy:date` (newest first). People search groups employer and title as `employments.{employer.name:"..." title:"..."}` so both clauses must match the same job. Recheck both in the new run.
 
 ## Open questions and risks
 
 Blockers before a real PR:
 
-- `diffbot` 3.4.0 must be on PyPI and pinned, and the validator rerun on the resulting package. Until then the dependency, access-domain, and safety results are unknown.
+- The live smoke test (every tool, including a crawl cycle) has not been rerun on the 3.4.0 package.
 - PRIVACY.md does not describe crawl yet.
 - The package has not been installed in Dify Community Edition or Dify Cloud. Do that, or write the limitation in the PR.
 - Whoever opens the PR must be allowed to publish under the `diffbot` author name. Open it from a fork owned by, or on behalf of, the `diffbot` organization.

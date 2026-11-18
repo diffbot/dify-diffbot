@@ -1,22 +1,13 @@
 """Builds the Diffbot SDK client and adapts it to this plugin's policy.
 
-The plugin runs on the ``diffbot`` Python SDK (sync ``Diffbot`` client). Everything
-the SDK does not expose yet is reached through the public ``client.request()``
-transport, never through private attributes, and each such helper feature-detects
-the real method so it drops out when the SDK ships it:
-
-* ``verify_token``     -> diffbot 3.3.0 (fallback: ``GET /v4/account?days=1``)
-* ``crawl_download``   -> diffbot 3.3.0 (fallback: ``GET /v3/crawl/data``)
-* extract options      -> diffbot 3.3.0 (fallback: ``GET /v3/{api}`` with the same params)
-
-TODO: when diffbot 3.2.0 / 3.3.0 are released, pin ``diffbot`` in
-``requirements.txt`` / ``pyproject.toml`` and delete the fallbacks.
+The plugin runs on the ``diffbot`` Python SDK (sync ``Diffbot`` client), pinned to
+``diffbot==3.4.0``. Every call goes through the guarded transport built here, and SDK
+errors are mapped to token-free plugin messages.
 """
 
 from __future__ import annotations
 
 import csv
-import inspect
 import io
 import json
 import urllib.request
@@ -36,6 +27,7 @@ from diffbot import (
     RateLimitError,
     ValidationError,
 )
+from diffbot.types import CrawlJob, ExtractResponse
 
 from tools.client import (
     DiffbotError,
@@ -43,7 +35,6 @@ from tools.client import (
     normalize_token,
     redact,
 )
-from tools.sdk_types import CrawlJob, ExtractResponse
 
 DEFAULT_TIMEOUT = 30.0
 MIN_TIMEOUT = 5.0
@@ -161,70 +152,15 @@ def verify_token(client: Diffbot) -> bool:
 
     Only an auth failure means False; other errors propagate.
     """
-    native = getattr(client, "verify_token", None)
-    if callable(native):
-        return bool(native())
-    try:
-        client.request("GET", f"{client.api_base}/v4/account", params={"token": client.token, "days": 1})
-    except AuthError:
-        return False
-    return True
+    return client.verify_token()
 
 
 # ---------------------------------------------------------------- extract
 
-EXTRACT_OPTION_WIRE = {
-    "timeout": "timeout",
-    "mode": "mode",
-    "fields": "fields",
-    "fallback": "fallback",
-    "discussion": "discussion",
-    "paging": "paging",
-    "max_pages": "maxPages",
-    "natural_language": "naturalLanguage",
-    "summary_num_sentences": "summaryNumSentences",
-    "max_tags": "maxTags",
-    "tag_confidence": "tagConfidence",
-    "category_confidence": "categoryConfidence",
-    "use_proxy": "useProxy",
-}
-_LIST_OPTIONS = {"fields", "natural_language"}
-
-
-def _supports_extract_options(client: Diffbot) -> bool:
-    try:
-        params = inspect.signature(client.extract).parameters
-    except (TypeError, ValueError):
-        return False
-    return "mode" in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
-
-
-def _wire_value(value: Any) -> Any:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, (list, tuple)):
-        return ",".join(str(item) for item in value)
-    return value
-
-
 def extract(client: Diffbot, url: str, api: str, fmt: str, options: Mapping[str, Any]) -> ExtractResponse:
-    """Extract ``url``. ``options`` use the SDK 3.3.0 keyword names (unset keys omitted)."""
+    """Extract ``url``. ``options`` use the SDK's keyword names (unset keys omitted)."""
     options = {key: value for key, value in options.items() if value is not None}
-    if not options or _supports_extract_options(client):
-        return cast(ExtractResponse, client.extract(url, api, fmt, **options))
-    # Fallback for SDKs without extract options: same request the SDK builds.
-    params: dict[str, Any] = {"token": client.token, "url": url, "timeout": 30000}
-    if fmt == "markdown":
-        params["mode"] = "llm"
-    for key, value in options.items():
-        params[EXTRACT_OPTION_WIRE[key]] = _wire_value(value)
-    timeout = params.get("timeout")
-    per_call = (float(timeout) / 1000.0 + 10.0) if isinstance(timeout, (int, float)) else None
-    response = client.request("GET", f"{client.analyze_url}/{api}", params=params, timeout=per_call)
-    data = response.json()
-    if isinstance(data, dict) and "errorCode" in data:
-        raise ExtractionError(data["errorCode"], data.get("error", ""))
-    return cast(ExtractResponse, data)
+    return cast(ExtractResponse, client.extract(url, api, fmt, **options))
 
 
 # ---------------------------------------------------------------- crawl
@@ -246,48 +182,23 @@ def crawl_get_job(client: Diffbot, job_name: str) -> CrawlJob:
     return cast(CrawlJob, job)
 
 
-def _download_text(result: Any) -> Any:
-    """Coerce a ``crawl_download`` return value (Response, bytes, str, parsed) to text/objects."""
-    if isinstance(result, (list, dict)):
-        return result
-    if hasattr(result, "text"):
-        return result.text
-    if isinstance(result, (bytes, bytearray)):
-        return bytes(result).decode("utf-8", errors="replace")
-    return str(result)
-
-
 def crawl_download(
     client: Diffbot, job_name: str, *, format: str = "json", type: str | None = None, num: int | None = None
 ) -> Any:
-    """Fetch crawl output as parsed rows/objects (a list, or a dict for JSON objects)."""
-    if type == "urls":
-        format = "csv"  # the URL report is CSV; the JSON decoder would reject it
-    native = getattr(client, "crawl_download", None)
-    if callable(native):
-        raw = native(job_name, format=format, type=type, num=num)
-    else:
-        params: dict[str, Any] = {"token": client.token, "name": job_name}
-        if format and format != "json":
-            params["format"] = format
-        if type:
-            params["type"] = type
-        if num is not None:
-            params["num"] = num
-        raw = client.request("GET", f"{client.crawler_url}/data", params=params, follow_redirects=True)
-    data = _download_text(raw)
+    """Fetch crawl output as parsed rows/objects. CSV (and the ``urls`` report, which is
+    always CSV) is parsed to rows; for JSON the SDK raises ``JobError`` on an error body."""
+    data = client.crawl_download(job_name, format=format, type=type, num=num)  # type: ignore[call-overload]
     if not isinstance(data, str):
         return data
-    if not data.strip():
-        return []
-    try:
-        parsed = json.loads(data)
-    except ValueError:
-        return list(csv.DictReader(io.StringIO(data)))
-    if isinstance(parsed, dict) and parsed.get("errorCode"):
-        # Same as diffbot 3.3.0: e.g. an unknown job is HTTP 200 + errorCode.
-        raise JobError(job_name, f"Crawl data download failed: {parsed.get('error') or 'unexpected response'}")
-    return parsed
+    if data.lstrip().startswith("{"):
+        # e.g. an unknown job is HTTP 200 + errorCode even when CSV was asked for
+        try:
+            parsed = json.loads(data)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict) and parsed.get("errorCode"):
+            raise JobError(job_name, f"Crawl data download failed: {parsed.get('error') or 'unexpected response'}")
+    return list(csv.DictReader(io.StringIO(data))) if data.strip() else []
 
 
 def as_dict(value: Any, what: str) -> dict[str, Any]:
