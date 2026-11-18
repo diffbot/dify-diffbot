@@ -6,7 +6,7 @@ Plugin version stays 0.1.0. It is not on the Dify Marketplace.
 
 ### Changed
 
-- Pin `diffbot==3.4.0` in `diffbot/requirements.txt` and `diffbot/pyproject.toml`.
+- Pin `diffbot==3.4.0rc0` in `diffbot/requirements.txt` and `diffbot/pyproject.toml` so CI can verify the SDK release candidate. Switch to `==3.4.0` for the unison publish.
 - Remove the editable `/workspace/diffbot-python` path from `requirements-dev.txt`.
 - CI installs the pin from PyPI and runs the SDK-dependent tests (the skip in `tests/conftest.py` is gone).
 

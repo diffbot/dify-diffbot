@@ -1,5 +1,4 @@
 # Dev/test requirements. Not a second pin: the SDK comes from diffbot/requirements.txt.
-# Until diffbot==3.4.0 is on PyPI, install a local 3.4.0 checkout yourself
-# (`pip install -e /path/to/diffbot-python`) and do not commit that path.
+# SDK pin is in diffbot/requirements.txt (currently the 3.4.0rc0 verification pin).
 -r diffbot/requirements.txt
 pytest

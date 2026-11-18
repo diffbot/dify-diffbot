@@ -33,15 +33,15 @@ Python 3.12+:
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements-dev.txt   # dify_plugin, pytest, and diffbot==3.4.0
+pip install -r requirements-dev.txt   # dify_plugin, pytest, and diffbot==3.4.0rc0
 pytest -q
 ```
 
-`diffbot/requirements.txt` pins `diffbot==3.4.0`. Until that release is on PyPI, install a local checkout of it editable and do not commit the path. `requirements-dev.txt` does not contain a machine-local path.
+`diffbot/requirements.txt` currently pins `diffbot==3.4.0rc0` so GitHub CI can install the SDK release candidate from PyPI. Switch this to `==3.4.0` for the unison publish. `requirements-dev.txt` does not contain a machine-local path.
 
 The tests serve every request from `httpx.MockTransport` and make no Diffbot calls. The wiring tests run against the SDK as installed and against a copy with the 3.3.0 methods removed, which covers the plugin's `client.request()` fallbacks (`verify_token`, `crawl_download`, extract options).
 
-GitHub CI (`.github/workflows/test.yml`) installs `diffbot/requirements.txt`, including `diffbot==3.4.0`, and runs the full suite.
+GitHub CI (`.github/workflows/test.yml`) installs `diffbot/requirements.txt`, including `diffbot==3.4.0rc0`, and runs the full suite.
 
 ## Package
 
