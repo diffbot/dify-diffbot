@@ -50,7 +50,7 @@ def serve(monkeypatch):
             seen.append(request)
             return handler(request)
 
-        monkeypatch.setattr("tools.sdk.httpx.HTTPTransport", lambda: httpx.MockTransport(wrapped))
+        monkeypatch.setattr("tools.sdk.httpx.HTTPTransport", lambda **_: httpx.MockTransport(wrapped))
         return seen
 
     return install
@@ -126,6 +126,24 @@ def test_transport_blocks_private_hosts_before_any_socket():
     with pytest.raises(DiffbotError, match="not allowed"):
         client.extract("https://example.org")
     assert inner_calls == []
+
+
+def test_default_transport_honors_proxy_environment(monkeypatch):
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.org:3128")
+    monkeypatch.setenv("NO_PROXY", "nl.diffbot.com")
+    guard = sdk.GuardedTransport()
+    assert guard._transport_for(httpx.URL("https://api.diffbot.com/v3/analyze")) is guard._proxied["https"]
+    assert guard._transport_for(httpx.URL("https://nl.diffbot.com/v1/")) is guard._inner
+    assert guard._transport_for(httpx.URL("http://api.diffbot.com/")) is guard._inner  # no HTTP_PROXY
+    guard.close()
+
+
+def test_explicit_inner_transport_ignores_proxy_environment(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.org:3128")
+    inner = httpx.MockTransport(lambda r: httpx.Response(200))
+    assert sdk.GuardedTransport(inner)._transport_for(httpx.URL("https://api.diffbot.com/")) is inner
 
 
 def test_guard_can_be_disabled_for_self_hosted_gateways():

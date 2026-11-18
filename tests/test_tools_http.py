@@ -51,7 +51,7 @@ def session_factory(monkeypatch):
                 return httpx.Response(result.status_code, text=result.payload, headers=result.headers)
             return httpx.Response(result.status_code, json=result.payload, headers=result.headers)
 
-        monkeypatch.setattr("tools.sdk.httpx.HTTPTransport", lambda: httpx.MockTransport(handler))
+        monkeypatch.setattr("tools.sdk.httpx.HTTPTransport", lambda **_: httpx.MockTransport(handler))
         return holder
 
     return install

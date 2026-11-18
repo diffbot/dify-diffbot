@@ -20,6 +20,7 @@ import csv
 import inspect
 import io
 import json
+import urllib.request
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any, cast
@@ -54,21 +55,41 @@ INVALID_TOKEN = "Invalid or unauthorized Diffbot token."
 
 class GuardedTransport(httpx.BaseTransport):
     """Wraps another transport and refuses private/loopback/metadata hosts and
-    non-http(s) schemes before any socket is opened."""
+    non-http(s) schemes before any socket is opened.
+
+    With no ``inner`` transport it honors ``HTTP(S)_PROXY`` / ``ALL_PROXY`` /
+    ``NO_PROXY`` like the old ``requests`` client did: httpx ignores the environment
+    once an explicit transport is passed, which would break proxied Dify deployments.
+    """
 
     def __init__(self, inner: httpx.BaseTransport | None = None, *, block_private_hosts: bool = True) -> None:
-        self._inner = inner or httpx.HTTPTransport()
         self._block = block_private_hosts
+        self._proxied: dict[str, httpx.BaseTransport] = {}
+        if inner is None:
+            proxies = urllib.request.getproxies()
+            for scheme in ("http", "https"):
+                proxy = proxies.get(scheme) or proxies.get("all")
+                if proxy:
+                    self._proxied[scheme] = httpx.HTTPTransport(proxy=proxy)
+        self._inner = inner or httpx.HTTPTransport()
+
+    def _transport_for(self, url: httpx.URL) -> httpx.BaseTransport:
+        proxied = self._proxied.get(url.scheme)
+        if proxied is None or urllib.request.proxy_bypass(url.host):
+            return self._inner
+        return proxied
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         if request.url.scheme not in ("http", "https"):
             raise DiffbotError("Request scheme is not allowed.")
         if self._block:
             check_public_host(request.url.host or "")
-        return self._inner.handle_request(request)
+        return self._transport_for(request.url).handle_request(request)
 
     def close(self) -> None:
         self._inner.close()
+        for transport in self._proxied.values():
+            transport.close()
 
 
 def _as_bool(value: Any, default: bool) -> bool:
