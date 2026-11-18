@@ -31,6 +31,7 @@ from diffbot import (
     Diffbot,
     DiffbotError as SdkError,
     ExtractionError,
+    JobError,
     NotFoundError,
     RateLimitError,
     ValidationError,
@@ -113,6 +114,9 @@ def api_error_message(exc: BaseException, token: str) -> str:
         if exc.error_code in (401, 403):
             return INVALID_TOKEN
         return f"Diffbot could not extract the page ({exc.error_code}): {redact(exc.error, token)[:300]}"
+    if isinstance(exc, JobError):
+        # JobError carries plain text, so APIError.message is empty; show the body.
+        return f"Diffbot crawl job error: {redact(exc.body or 'job failed', token)[:300]}"
     if isinstance(exc, NotFoundError):
         return "Diffbot did not find that resource."
     if isinstance(exc, APIError):
@@ -134,6 +138,8 @@ def mapped_errors(client: Diffbot) -> Iterator[None]:
         raise
     except ValidationError as exc:
         raise DiffbotError(redact(str(exc), client.token)) from None
+    except json.JSONDecodeError:
+        raise DiffbotError("Diffbot returned a non-JSON response.") from None
     except (SdkError, httpx.HTTPError) as exc:
         raise DiffbotError(api_error_message(exc, client.token)) from None
 
@@ -266,9 +272,13 @@ def crawl_download(
     if not data.strip():
         return []
     try:
-        return json.loads(data)
+        parsed = json.loads(data)
     except ValueError:
         return list(csv.DictReader(io.StringIO(data)))
+    if isinstance(parsed, dict) and parsed.get("errorCode"):
+        # Same as diffbot 3.3.0: e.g. an unknown job is HTTP 200 + errorCode.
+        raise JobError(job_name, f"Crawl data download failed: {parsed.get('error') or 'unexpected response'}")
+    return parsed
 
 
 # ---------------------------------------------------------------- enhance (plugin-side only)
@@ -280,6 +290,8 @@ def enhance(client: Diffbot, params: Mapping[str, Any]) -> dict[str, Any]:
     data = response.json()
     if not isinstance(data, dict):
         raise DiffbotError("Diffbot Enhance returned an unexpected response.")
+    if data.get("errorCode"):  # some failures come back as HTTP 200 + errorCode
+        raise APIError(response.status_code, response.text)
     return data
 
 

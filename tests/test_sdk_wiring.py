@@ -15,6 +15,7 @@ from tools import sdk
 from tools.client import DiffbotError
 from tools.crawl_jobs import CrawlJobsTool
 from tools.crawl_start import CrawlStartTool
+from tools.enhance_entity import EnhanceEntityTool
 from tools.extract import ExtractTool
 from tools.search_organizations import SearchOrganizationsTool
 from tools.search_web import SearchWebTool
@@ -81,6 +82,19 @@ def test_validation_does_not_treat_server_errors_as_a_bad_token(serve):
     with pytest.raises(Exception) as caught:
         DiffbotProvider()._validate_credentials(CREDS)
     assert "Invalid or unauthorized" not in str(caught.value)
+
+
+def test_non_json_body_is_a_safe_error(serve):
+    serve(lambda r: httpx.Response(200, text="<html>oops</html>"))
+    with pytest.raises(DiffbotError, match="non-JSON"):
+        list(SearchWebTool.from_credentials(CREDS).invoke({"query": "x"}))
+
+
+def test_enhance_error_code_in_a_200_body_is_an_error(serve):
+    serve(lambda r: httpx.Response(200, json={"errorCode": 500, "error": f"boom {TOKEN}"}))
+    with pytest.raises(DiffbotError, match="boom") as caught:
+        list(EnhanceEntityTool.from_credentials(CREDS).invoke({"entity_type": "Organization", "name": "Diffbot"}))
+    assert TOKEN not in str(caught.value)
 
 
 @pytest.mark.parametrize("value", ["abc", "4", "301", "-1"])
@@ -293,6 +307,12 @@ def test_crawl_results_use_native_crawl_download_when_available():
             return httpx.Response(200, json=[{"title": "t"}])
 
     assert sdk.crawl_download(Fake(), "j", num=5) == [{"title": "t"}]  # type: ignore[arg-type]
+
+
+def test_crawl_download_job_error_shows_the_reason(serve):
+    serve(lambda r: httpx.Response(200, json={"errorCode": 500, "error": "No collection record"}))
+    with pytest.raises(DiffbotError, match="No collection record"):
+        _jobs({"action": "results", "job_name": "j1"})
 
 
 def test_crawl_delete_is_not_retried(serve):
