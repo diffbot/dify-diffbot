@@ -29,7 +29,7 @@ Done:
 - Icon: `_assets/icon.png` is the official 2026 Diffbot logomark, the green rounded-square tile (512×512 PNG).
 - `meta.minimum_dify_version`: 1.14.0. The dify_plugin 0.11.0 README lists Dify 1.14.0 for SDK 0.8.1 and later. The plugin uses no later gated feature (OAuth, dynamic-select, multiple selects, reset_on_change). The optional dynamic-select for the organization industry was not added.
 - Unit tests: `pytest` with mocked HTTP, run by GitHub CI against `diffbot==3.4.1` from PyPI.
-- `diffbot` 3.4.0 is on PyPI (18 November 2026) and pinned. The feature-detect fallbacks in `diffbot/tools/sdk.py` (`verify_token`, `crawl_download`, extract options) and the local TypedDicts in `tools/sdk_types.py` are gone; the plugin calls the native 3.4.0 methods.
+- `diffbot==3.4.1` is pinned exactly (3.4.0 was published 18 November 2026; 3.4.1 adds the tri-state `obeyRobots`/`useProxies` fix). The feature-detect fallbacks in `diffbot/tools/sdk.py` (`verify_token`, `crawl_download`, extract options) and the local TypedDicts in `tools/sdk_types.py` are gone; the plugin calls the native SDK methods.
 - Marketplace validator rerun on the rebuilt package on 18 November 2026: exit 0, 0 blocking failures, serverless start-up test passed. See "Results for the current package".
 
 Still to do:
@@ -102,16 +102,16 @@ From `provider/diffbot.yaml` `credentials_for_provider`:
 - `llm.diffbot.com` (Web Search)
 - `nl.diffbot.com` (Natural Language)
 
-The plugin process only talks to these four hosts. Neither credentials nor parameters can change the SDK base URLs. User-supplied URLs (extract `url`, crawl `seeds`, crawl `api_url`) go to Diffbot as parameters, and Diffbot's own infrastructure fetches them. The plugin does not.
+By default the plugin process only talks to these four hosts. Tool parameters cannot change the SDK base URLs. The optional advanced credential fields (`api_base`, `kg_base`, `llm_base`, `nlp_base`) can, but `make_client` accepts only https URLs on `diffbot.com` or a subdomain, with no credentials, query, fragment, or non-default port, so the token can only go to a Diffbot host. A `*.diffbot.com` host other than the four above is not in `network.domains` and may be blocked where Dify enforces that list. User-supplied URLs (extract `url`, crawl `seeds`, crawl `api_url`) go to Diffbot as parameters, and Diffbot's own infrastructure fetches them. The plugin does not.
 
 ## Package the file they will attach
 
 From a checkout of the plugin, with the Dify plugin CLI (the 18 November 2026 run used `dify` v0.6.15, the same as the v0.1 run):
 
 ```bash
-dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
-dify plugin checksum dist/diffbot-0.1.0.difypkg
-python3 validator/validate-difypkg.py dist/diffbot-0.1.0.difypkg --output-dir ./validation-report
+dify plugin package ./diffbot -o dist/diffbot-0.2.0.difypkg
+dify plugin checksum dist/diffbot-0.2.0.difypkg
+python3 validator/validate-difypkg.py dist/diffbot-0.2.0.difypkg --output-dir ./validation-report
 ```
 
 The validator lives in [langgenius/dify-marketplace-toolkit](https://github.com/langgenius/dify-marketplace-toolkit) (it needs `yq` on `PATH`). Exit code 0 means no blocking package errors. Warnings still need an explanation in the PR. The PR body below already carries the 18 November 2026 run's results.
@@ -120,8 +120,8 @@ The validator lives in [langgenius/dify-marketplace-toolkit](https://github.com/
 
 ```bash
 dify signature generate -f your_key_pair
-dify signature sign dist/diffbot-0.1.0.difypkg -p your_key_pair.private.pem -c community
-dify signature verify dist/diffbot-0.1.0.signed.difypkg -p your_key_pair.public.pem
+dify signature sign dist/diffbot-0.2.0.difypkg -p your_key_pair.private.pem -c community
+dify signature verify dist/diffbot-0.2.0.signed.difypkg -p your_key_pair.public.pem
 ```
 
 Keep the private key out of git. `dify signature verify` with no `-p` checks the Marketplace public key and will reject this package, which is expected before Dify signs it. Community Edition with `FORCE_VERIFYING_SIGNATURE=true` will also reject the unsigned file until an admin adds the matching public key. See the signature doc linked above.
@@ -131,10 +131,10 @@ Keep the private key out of git. `dify signature verify` with no `-p` checks the
 Fork `langgenius/dify-plugins`, sync `main`, and branch. The current publishing guide wants exactly one new `.difypkg` in the PR. Suggested path:
 
 ```text
-diffbot/diffbot/diffbot-0.1.0.difypkg
+diffbot/diffbot/diffbot-0.2.0.difypkg
 ```
 
-That is `<github-owner>/<plugin-name>/<plugin-name>-<version>.difypkg`. Owner, plugin name, and version must match `manifest.yaml` (`diffbot`, `diffbot`, `0.1.0`).
+That is `<github-owner>/<plugin-name>/<plugin-name>-<version>.difypkg`. Owner, plugin name, and version must match `manifest.yaml` (`diffbot`, `diffbot`, `0.2.0`).
 
 ```bash
 git clone https://github.com/<github-owner>/dify-plugins.git
@@ -143,13 +143,13 @@ git remote add upstream https://github.com/langgenius/dify-plugins.git
 git fetch upstream
 git switch main
 git merge --ff-only upstream/main
-git switch -c add-diffbot-0.1.0
+git switch -c add-diffbot-0.2.0
 mkdir -p diffbot/diffbot
-cp /path/to/diffbot-0.1.0.difypkg diffbot/diffbot/
-git add diffbot/diffbot/diffbot-0.1.0.difypkg
+cp /path/to/diffbot-0.2.0.difypkg diffbot/diffbot/
+git add diffbot/diffbot/diffbot-0.2.0.difypkg
 git status --short
 git diff --stat
-git commit -m "add diffbot 0.1.0"
+git commit -m "add diffbot 0.2.0"
 git push -u origin HEAD
 ```
 
@@ -157,7 +157,7 @@ Open the PR against `langgenius/dify-plugins:main`. Do not open it as a draft un
 
 The repository README still says to commit plugin source next to the package. The current publish guide and the Exa resubmission (`langgenius/dify-plugins` #2692, merged 13 July 2026) say the opposite: CI must see one `.difypkg`, and source stays in the public repo linked from the manifest. Follow the current guide. If a reviewer asks for the source tree inside `dify-plugins`, add it only in the way they specify, in that same PR.
 
-Later versions add a new file such as `diffbot/diffbot/diffbot-0.2.0.difypkg` and leave the old package in place unless a maintainer says to delete it. Bump `version` in `manifest.yaml`. Do not reuse `0.1.0`.
+0.1.0 was never submitted, so the first submission is 0.2.0. Later versions add a new file such as `diffbot/diffbot/diffbot-0.3.0.difypkg` and leave the old package in place unless a maintainer says to delete it. Bump `version` in `manifest.yaml`. Do not reuse a submitted version.
 
 ## PR body to paste
 
@@ -170,7 +170,7 @@ Fill this in from the live template. Keep every section. Check exactly one risk 
 
 - **Author**: diffbot
 - **Plugin name**: diffbot
-- **Version**: 0.1.0
+- **Version**: 0.2.0
 - **Source repository**: https://github.com/diffbot/dify-diffbot
 - **Contact**: support@diffbot.com
 
@@ -229,20 +229,20 @@ Extract and crawl both send user-supplied http(s) URLs to Diffbot, and Diffbot f
 ## Local validation
 
 ```text
-dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg   # dify CLI v0.6.15
-dify plugin checksum dist/diffbot-0.1.0.difypkg
-python3 validator/validate-difypkg.py dist/diffbot-0.1.0.difypkg --output-dir ./validation-report --pr-body-file pr-body.md
+dify plugin package ./diffbot -o dist/diffbot-0.2.0.difypkg   # dify CLI v0.6.15
+dify plugin checksum dist/diffbot-0.2.0.difypkg
+python3 validator/validate-difypkg.py dist/diffbot-0.2.0.difypkg --output-dir ./validation-report --pr-body-file pr-body.md
 ```
 
-Checksum (`dify plugin checksum`): `7c9012578f4a2a98b02b0693fe484962de3305620dd0fb63b2de165bb85e3e91`. Archive: 48,816 bytes, 32 files.
+Checksum (`dify plugin checksum`): STALE, from the 0.1.0 package: `7c9012578f4a2a98b02b0693fe484962de3305620dd0fb63b2de165bb85e3e91`. Archive: 48,816 bytes, 32 files. Replace with the 0.2.0 numbers.
 
-Validator (dify-marketplace-toolkit `83ee707`): exit 0, 0 blocking failures, 0 execution failures. All 12 checks PASS: package_contents, package_secrets, package_binaries, manifest_metadata, readme_metadata, package_dependencies, python_compile, sensitive_capabilities (blocking), and python_safety, prohibited_financial_activity, access_domains, dependency_vulnerabilities (warning). Warnings, explained:
-- dependency_vulnerabilities: `requirements.txt` has 2 pinned, 0 unpinned (`dify_plugin==0.11.0`, `diffbot==3.4.0`). OSV reports no known vulnerabilities in the pinned set.
-- access_domains: "manifest declares network.domains but the static scan found no literal hostname; this is expected for SDK-based plugins." The Diffbot base URLs live inside the `diffbot` SDK. The plugin cannot change them, and the four declared hosts are the only ones the SDK calls.
+Validator (dify-marketplace-toolkit `83ee707`, STALE: 0.1.0 package, rerun on 0.2.0): exit 0, 0 blocking failures, 0 execution failures. All 12 checks PASS: package_contents, package_secrets, package_binaries, manifest_metadata, readme_metadata, package_dependencies, python_compile, sensitive_capabilities (blocking), and python_safety, prohibited_financial_activity, access_domains, dependency_vulnerabilities (warning). Warnings, explained:
+- dependency_vulnerabilities: `requirements.txt` has 2 pinned, 0 unpinned (`dify_plugin==0.11.0`, `diffbot==3.4.0` in the stale run). OSV reports no known vulnerabilities in the pinned set.
+- access_domains: "manifest declares network.domains but the static scan found no literal hostname; this is expected for SDK-based plugins." The Diffbot base URLs live inside the `diffbot` SDK, and the four declared hosts are the only ones it calls by default. The optional advanced credential fields can point it at another https `diffbot.com` host and nothing else.
 - package_secrets: `tools/sdk.py` `INVALID_TOKEN` was flagged for review. It is the error text "Invalid or unauthorized Diffbot token.", not a secret.
 - python_safety: `tools/sdk.py` returns or raises values that may contain credentials (the `Diffbot(...)` client built with the user's token, and error messages). Every error string passes through `redact(..., token)` first, and the client object never reaches tool output.
 
-Unit tests: `pytest` with mocked HTTP, green in GitHub CI on `diffbot==3.4.0`. Plugin start-up (`validator/test-plugin-install.py`, `INSTALL_METHOD=serverless`): success ("Serving Flask app", request to port 8080 succeeded).
+Unit tests: `pytest` with mocked HTTP, run in GitHub CI on `diffbot==3.4.1` (confirm green before pasting). Plugin start-up (`validator/test-plugin-install.py`, `INSTALL_METHOD=serverless`): success ("Serving Flask app", request to port 8080 succeeded).
 
 Live smoke test: PENDING. Rerun every tool, including a crawl start/status/results/delete cycle, against the Diffbot API with a real token.
 
@@ -305,7 +305,7 @@ A third-party write-up of Marketplace tool installs on 16 October 2026 put Tavil
 
 `diffbot-mcp` tools on 9 November 2026: `extract`, `search_web`, `crawl`, `resolve_entities`, `search_news`, `search_organizations`, `search_people`, `search_places`, `search_deals`, `dql`, `dql_probe`, `dql_ontology`. The October 2026 changelog removed MCP `enhance` in favor of `resolve_entities` plus the typed searches. This plugin dropped its `enhance_entity` tool for the same reason (commit 7323b7b), so it matches the Diffbot Python SDK surface.
 
-v1 has what a Dify user expects from Tavily or Firecrawl: search, extract, and crawl. It adds the Knowledge Graph lookups that set Diffbot apart: organizations, people, news, and entity linking. Version 0.2.0 adds a raw DQL tool; it caps size at 100 rows, query length at 10,000 characters and JSON output at 200,000 characters, and scrubs email, phone and html from JSON output (not from csv/xls/xlsx exports). Crawl is in v1 because Tavily and Firecrawl both offer it. That decision moves the plugin into the "crawl arbitrary URLs" high-risk case. Places, deals, ontology browse, and hit-count probes can come in a later version once v1 has been installed for real.
+v1 has what a Dify user expects from Tavily or Firecrawl: search, extract, and crawl. It adds the Knowledge Graph lookups that set Diffbot apart: organizations, people, news, and entity linking. Version 0.2.0 adds a raw DQL tool; it caps size at 100 rows, query length at 10,000 characters and JSON output at 200,000 characters, and scrubs email, phone and html from JSON output (not from csv/xls/xlsx exports). Crawl is in v1 because Tavily and Firecrawl both offer it. That decision moves the plugin into the "crawl arbitrary URLs" high-risk case. Version 0.2.0 also adds ontology lookup (`kg_ontology`) and hit counts (`count_only`). Places and deals can come in a later version once the plugin has been installed for real.
 
 The SDK handles authentication as the API docs describe. Extract, Account, Crawl, DQL, and Natural Language take `token` as a query parameter on `api.diffbot.com`, `kg.diffbot.com`, and `nl.diffbot.com`. Web Search on `llm.diffbot.com` uses `Authorization: Bearer`, so the token does not appear in that host's query string.
 
@@ -323,8 +323,7 @@ Live smoke test: **PENDING.** It needs a real Diffbot token, and none was availa
 
 Blockers before a real PR:
 
-- The live smoke test (every tool, including a crawl cycle) has not been rerun on the 3.4.0 package.
-- PRIVACY.md does not describe crawl yet.
+- The live smoke test (every tool, including a crawl cycle and the new 0.2.0 tools) has not been run on the 0.2.0 package.
 - The package has not been installed in Dify Community Edition or Dify Cloud. Do that, or write the limitation in the PR.
 - Whoever opens the PR must be allowed to publish under the `diffbot` author name. Open it from a fork owned by, or on behalf of, the `diffbot` organization.
 
