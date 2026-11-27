@@ -9,8 +9,8 @@ description:
   llm: >
     Run Diffbot natural language entity recognition on plain text.
     Returns each mention's name, types, confidence, salience, sentiment, and Knowledge Graph id when linked.
-    Also returns dql_filter, an id:or(...) clause. This v1 plugin does not execute that clause;
-    use Search organizations, Search people, or a later raw DQL tool with the ids.
+    Also returns dql_filter, an id:or(...) clause. Pass it to the Knowledge Graph query (DQL)
+    tool to look up those records, or use Search organizations or Search people.
     Maximum 20000 characters. Do not send secrets, credentials, or private messages.
 parameters:
   - name: text

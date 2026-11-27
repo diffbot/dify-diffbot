@@ -219,3 +219,48 @@ def trim_resolved_entities(data: dict[str, Any]) -> dict[str, Any]:
 def summarize_lines(title: str, lines: list[str]) -> str:
     body = "\n".join(lines) if lines else "No matching records."
     return clip(f"{title}\n{body}", SUMMARY_LIMIT)
+
+
+# Keys dropped from raw Knowledge Graph and NLP output (case-insensitive). These are the
+# contact fields the PRIVACY.md promise covers, plus the full-page HTML the trimmed tools drop.
+PRIVATE_KEYS = frozenset(
+    {
+        "emails",
+        "email",
+        "emailaddress",
+        "emailaddresses",
+        "phonenumbers",
+        "phonenumber",
+        "phones",
+        "phone",
+        "html",
+    }
+)
+
+
+def scrub_private(value: Any) -> Any:
+    """Return ``value`` with every private key removed at any depth (dicts and lists)."""
+    if isinstance(value, dict):
+        return {
+            key: scrub_private(item)
+            for key, item in value.items()
+            if not (isinstance(key, str) and key.lower() in PRIVATE_KEYS)
+        }
+    if isinstance(value, list):
+        return [scrub_private(item) for item in value]
+    return value
+
+
+def fit_rows(rows: list[Any], limit: int) -> tuple[list[Any], bool]:
+    """Keep leading ``rows`` while their JSON size stays within ``limit`` characters.
+
+    Returns the kept rows and whether any were dropped.
+    """
+    kept: list[Any] = []
+    used = 0
+    for row in rows:
+        used += len(json.dumps(row, default=str))
+        if used > limit:
+            return kept, True
+        kept.append(row)
+    return kept, False

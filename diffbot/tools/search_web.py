@@ -12,6 +12,7 @@ from tools.dql_builder import bounded_number
 from tools.shape import summarize_lines, trim_web_search
 
 SNIPPETS = {"short", "medium", "long", "full"}
+QUERY_FIELDS = ("query", "query_2", "query_3", "query_4", "query_5")
 
 
 def _is_page_lookup(query: str) -> bool:
@@ -21,11 +22,18 @@ def _is_page_lookup(query: str) -> bool:
 
 class SearchWebTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
-        query = optional_text(tool_parameters, "query")
-        if not query:
+        # Up to five queries; blanks are dropped before counting.
+        queries = [
+            text
+            for text in (optional_text(tool_parameters, name) for name in QUERY_FIELDS)
+            if text
+        ]
+        if not queries:
             raise DiffbotError("A search query is required.")
-        if len(query) > 2000:
-            raise DiffbotError("Search query is too long (2000 characters maximum).")
+        for text in queries:
+            if len(text) > 2000:
+                raise DiffbotError("Search query is too long (2000 characters maximum each).")
+        query = queries[0]
 
         num_value = tool_parameters.get("num_results")
         if num_value is None or num_value == "":
@@ -36,7 +44,7 @@ class SearchWebTool(Tool):
             )
 
         snippet = optional_text(tool_parameters, "snippet_length").lower()
-        if not snippet and _is_page_lookup(query):
+        if not snippet and len(queries) == 1 and _is_page_lookup(query):
             snippet = "full"  # a lone url: query asks for the stored page
         if snippet and snippet not in SNIPPETS:
             raise DiffbotError("snippet_length must be short, medium, long, or full.")
@@ -53,7 +61,7 @@ class SearchWebTool(Tool):
             # Blank snippet_length is omitted so the API default (long) applies.
             data = as_dict(
                 client.web_search(
-                    query,
+                    queries[0] if len(queries) == 1 else queries,
                     num_results=num_results,
                     max_tokens=max_tokens,
                     snippet_length=snippet or None,  # type: ignore[arg-type]
