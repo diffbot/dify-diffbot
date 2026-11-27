@@ -46,7 +46,7 @@ class NlpTool(Tool):
         options: dict[str, Any] = {}
         sentences = tool_parameters.get("max_number_of_sentences")
         if sentences not in (None, ""):
-            count = int(bounded_number(sentences, label="max_number_of_sentences", minimum=1, maximum=50, integer=True))
+            count = int(bounded_number(sentences, label="max_number_of_sentences", minimum=1, maximum=10, integer=True))
             options["custom_summary"] = {"max_number_of_sentences": count}
 
         client = make_client(self.runtime.credentials)

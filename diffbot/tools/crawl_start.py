@@ -106,7 +106,10 @@ class CrawlStartTool(Tool):
             kwargs["custom_headers"] = headers
         webhook = optional_text(tool_parameters, "notify_webhook")
         if webhook:
-            kwargs["notify_webhook"] = validate_public_http_url(webhook)
+            webhook = validate_public_http_url(webhook)
+            if not webhook.lower().startswith("https://"):
+                raise DiffbotError("notify_webhook must start with https://.")
+            kwargs["notify_webhook"] = webhook
         email = optional_text(tool_parameters, "notify_email")
         if email:
             if len(email) > 254 or not _EMAIL.fullmatch(email):

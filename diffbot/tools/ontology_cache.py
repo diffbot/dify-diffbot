@@ -61,6 +61,9 @@ class OntologyCache:
                 raise DiffbotError("The Knowledge Graph ontology is temporarily unavailable. Try again in a few minutes.")
             try:
                 ontology = client.dql_fetch_ontology()
+                if not isinstance(getattr(ontology, "data", None), dict):
+                    # e.g. an error page or a JSON list: do not cache something the lookups cannot read
+                    raise DiffbotError("Diffbot returned an unexpected ontology document.")
             except Exception:
                 entry.retry_after = now + self._backoff
                 if entry.ontology is not None:

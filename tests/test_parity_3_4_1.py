@@ -8,6 +8,7 @@ import threading
 
 import httpx
 import pytest
+from diffbot.ontology import Ontology
 
 from provider.diffbot import DiffbotProvider
 from tools import ontology_cache, sdk
@@ -211,6 +212,7 @@ def test_crawl_new_options_reach_the_wire(serve):
 @pytest.mark.parametrize("extra,match", [
     ({"notify_webhook": "http://localhost/x"}, "not allowed"),
     ({"notify_webhook": "ftp://example.org"}, "http"),
+    ({"notify_webhook": "http://hooks.example.org/x"}, "https"),
     ({"notify_email": "not-an-email"}, "email"),
     ({"job_name": "j" * 31}, "30 characters"),
 ])
@@ -325,6 +327,8 @@ def test_nlp_validation():
         run(NlpTool, {"text": "x" * 20_001})
     with pytest.raises(DiffbotError, match="fields"):
         run(NlpTool, {"text": "x", "fields": "bogus"})
+    with pytest.raises(DiffbotError, match="max_number_of_sentences"):
+        run(NlpTool, {"text": "x", "max_number_of_sentences": 11})
 
 
 def test_account_usage_returns_only_allowlisted_fields(serve):
@@ -450,7 +454,7 @@ class FakeClient:
 def test_ontology_cache_ttl_stale_on_failure_and_backoff():
     now = [0.0]
     cache = ontology_cache.OntologyCache(clock=lambda: now[0], ttl=100, backoff=10)
-    first, second = object(), object()
+    first, second = Ontology({"types": {}}), Ontology({"types": {}})
     client = FakeClient("u1", [first, httpx.ConnectError("down"), second])
     assert cache.get(client) is first and cache.get(client) is first and client.calls == 1
     now[0] = 101  # expired; refresh fails -> stale copy, then back off
@@ -463,16 +467,35 @@ def test_ontology_cache_ttl_stale_on_failure_and_backoff():
 def test_ontology_cache_backs_off_after_failure_with_no_stale_copy_and_keys_by_url():
     now = [0.0]
     cache = ontology_cache.OntologyCache(clock=lambda: now[0], ttl=100, backoff=10)
-    bad = FakeClient("u1", [httpx.ConnectError("down"), "ok"])
+    ok, other_doc = Ontology({"types": {}}), Ontology({"enums": {}})
+    bad = FakeClient("u1", [httpx.ConnectError("down"), ok])
     with pytest.raises(httpx.ConnectError):
         cache.get(bad)
     with pytest.raises(DiffbotError, match="temporarily"):
         cache.get(bad)
     assert bad.calls == 1
-    other = FakeClient("u2", ["other"])
-    assert cache.get(other) == "other"  # a different URL has its own entry
+    other = FakeClient("u2", [other_doc])
+    assert cache.get(other) is other_doc  # a different URL has its own entry
     now[0] = 11
-    assert cache.get(bad) == "ok"
+    assert cache.get(bad) is ok
+
+
+def test_ontology_cache_rejects_a_non_object_document_and_backs_off():
+    now = [0.0]
+    cache = ontology_cache.OntologyCache(clock=lambda: now[0], ttl=100, backoff=10)
+    client = FakeClient("u1", [Ontology(["not", "a", "dict"])])  # type: ignore[arg-type]
+    with pytest.raises(DiffbotError, match="unexpected ontology"):
+        cache.get(client)
+    with pytest.raises(DiffbotError, match="temporarily"):
+        cache.get(client)
+    assert client.calls == 1
+
+
+def test_industry_passes_through_when_the_ontology_is_not_an_object(serve):
+    seen = serve(lambda r: httpx.Response(200, json=[1, 2]) if r.url.path == "/kg/ontology"
+                 else httpx.Response(200, json={"hits": 0, "data": []}))
+    run(SearchOrganizationsTool, {"industry": "Widgets"})
+    assert 'categories.name:"Widgets"' in _body(seen[-1])["query"]
 
 
 def test_ontology_lookups(serve):
