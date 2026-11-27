@@ -20,10 +20,15 @@ The installable plugin is in [`diffbot/`](diffbot/). Its [README](diffbot/README
 | Start crawl | `GET https://api.diffbot.com/v3/crawl` (create only; returns a job name) |
 | Crawl jobs | list / status / results / **delete (destructive)** on `/v3/crawl` and `/v3/crawl/data` |
 | Resolve entities | `POST https://nl.diffbot.com/v1/` |
+| Knowledge Graph query | `POST https://kg.diffbot.com/kg/v3/dql` (raw DQL; JSON/jsonl scrubbed, csv/xls/xlsx exports not) |
+| Knowledge Graph ontology | `GET https://kg.diffbot.com/kg/ontology` (no token; 24 h in-memory cache) |
+| Ask Diffbot | `POST https://llm.diffbot.com/rag/v1/chat/completions` (bearer token; undocumented endpoint) |
+| Natural language analysis | `POST https://nl.diffbot.com/v1/` |
+| Account usage | `GET https://api.diffbot.com/v4/account` |
 
 Saving the credential checks `GET https://api.diffbot.com/v4/account?days=1`. Get a free token at [app.diffbot.com/get-started](https://app.diffbot.com/get-started).
 
-Raw DQL, ontology lookup, Ask, places, and deals are not in this version. See SUBMISSION.md for why.
+The plugin covers the `diffbot` 3.4.1 sync client. Enhance, Bulk Extract, Custom API management, crawl pause/restart, and the file-writing ontology refresh are not included. See SUBMISSION.md.
 
 All HTTP goes through the [Diffbot Python SDK](https://github.com/diffbot/diffbot-python) (`diffbot.Diffbot`), behind a transport that refuses private, loopback, and cloud-metadata hosts.
 
@@ -33,23 +38,23 @@ Python 3.12+:
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
-pip install -r requirements-dev.txt   # dify_plugin, pytest, and diffbot==3.4.0
+pip install -r requirements-dev.txt   # dify_plugin, pytest, and diffbot==3.4.1
 pytest -q
 ```
 
-`diffbot/requirements.txt` pins `diffbot==3.4.0`, which is on PyPI. `requirements-dev.txt` does not contain a machine-local path.
+`diffbot/requirements.txt` pins `diffbot==3.4.1`, which is on PyPI. `requirements-dev.txt` does not contain a machine-local path.
 
-The tests serve every request from `httpx.MockTransport` and make no Diffbot calls. The wiring tests run against the pinned SDK (`diffbot==3.4.0`) and its native `verify_token`, `crawl_download`, and extract options.
+The tests serve every request from `httpx.MockTransport` and make no Diffbot calls. The wiring tests run against the pinned SDK (`diffbot==3.4.1`) and its native `verify_token`, `crawl_download`, and extract options.
 
-GitHub CI (`.github/workflows/test.yml`) installs `diffbot/requirements.txt`, including `diffbot==3.4.0`, and runs the full suite.
+GitHub CI (`.github/workflows/test.yml`) installs `diffbot/requirements.txt`, including `diffbot==3.4.1`, and runs the full suite.
 
 ## Package
 
 Install the Dify plugin CLI from [langgenius/dify-plugin-daemon](https://github.com/langgenius/dify-plugin-daemon) and run from the repository root:
 
 ```bash
-dify plugin package ./diffbot -o dist/diffbot-0.1.0.difypkg
-dify plugin checksum dist/diffbot-0.1.0.difypkg
+dify plugin package ./diffbot -o dist/diffbot-0.2.0.difypkg
+dify plugin checksum dist/diffbot-0.2.0.difypkg
 ```
 
 `dist/` is ignored by git. The package is unsigned; Dify signs marketplace builds after review. Self-hosted Dify rejects unsigned local installs unless an administrator trusts a signature or turns off verification. Signing commands are in `diffbot/README.md`. Never commit a private key.
