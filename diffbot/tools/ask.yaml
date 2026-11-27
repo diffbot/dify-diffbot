@@ -1,0 +1,74 @@
+identity:
+  name: ask
+  author: diffbot
+  label:
+    en_US: Ask Diffbot
+description:
+  human:
+    en_US: Ask Diffbot's LLM a question and get an answer grounded in its web and Knowledge Graph search. Answers can be streamed text, a JSON object, or JSON that follows your schema. The underlying endpoint is not publicly documented, so its behavior may change.
+  llm: >
+    Ask Diffbot's LLM a factual question and get a grounded answer. Use output text for prose,
+    json for a free-form JSON object, or json_schema with a JSON Schema for a fixed shape.
+    Answers are model output and can be wrong; cite sources with Web search when it matters.
+    Maximum question length 8000 characters. Do not send secrets.
+parameters:
+  - name: question
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Question
+    human_description:
+      en_US: The question to ask (8000 characters maximum).
+    llm_description: The question to ask, at most 8000 characters. Do not include secrets.
+  - name: system_prompt
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: System prompt
+    human_description:
+      en_US: Optional instructions that shape the answer (8000 characters maximum).
+    llm_description: Optional system instructions (8000 characters maximum).
+  - name: output
+    type: select
+    required: false
+    form: form
+    default: text
+    label:
+      en_US: Output
+    human_description:
+      en_US: text for prose, json for a JSON object, json_schema for JSON that follows the schema below.
+    llm_description: text, json, or json_schema.
+    options:
+      - value: text
+        label:
+          en_US: Text
+      - value: json
+        label:
+          en_US: JSON object
+      - value: json_schema
+        label:
+          en_US: JSON with schema
+  - name: json_schema
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: JSON schema
+    human_description:
+      en_US: A JSON Schema object (20 KB maximum). Used only when Output is JSON with schema.
+    llm_description: A JSON Schema object as text, used only when output is json_schema.
+  - name: stream
+    type: boolean
+    required: false
+    form: form
+    default: true
+    label:
+      en_US: Stream text
+    human_description:
+      en_US: Send text as it arrives. Ignored for JSON output, which is returned whole.
+    llm_description: Send text as it arrives. Ignored for JSON output.
+extra:
+  python:
+    source: tools/ask.py

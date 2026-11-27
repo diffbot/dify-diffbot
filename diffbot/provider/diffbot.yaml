@@ -4,7 +4,7 @@ identity:
   label:
     en_US: Diffbot
   description:
-    en_US: Search the web, extract a page into structured text, and look up organizations, people, and news in the Diffbot Knowledge Graph.
+    en_US: Search the web, extract pages, ask Diffbot's LLM, run NLP, query the Diffbot Knowledge Graph (including raw DQL and its ontology), run crawls, and check account usage.
   icon: icon.png
   tags:
     - search
@@ -31,6 +31,42 @@ credentials_for_provider:
       en_US: "30"
     help:
       en_US: Seconds to wait for each Diffbot call, from 5 to 300. Leave blank for 30.
+  api_base:
+    type: text-input
+    required: false
+    label:
+      en_US: API base URL (advanced)
+    placeholder:
+      en_US: https://api.diffbot.com
+    help:
+      en_US: "Advanced. Leave blank for https://api.diffbot.com. Must be https on a diffbot.com host, with no query string or credentials. Your token is sent to this host, so only use a Diffbot-operated host."
+  kg_base:
+    type: text-input
+    required: false
+    label:
+      en_US: Knowledge Graph base URL (advanced)
+    placeholder:
+      en_US: https://kg.diffbot.com
+    help:
+      en_US: "Advanced. Leave blank for https://kg.diffbot.com. Must be https on a diffbot.com host, with no query string or credentials. Your token is sent to this host, so only use a Diffbot-operated host."
+  llm_base:
+    type: text-input
+    required: false
+    label:
+      en_US: LLM and web search base URL (advanced)
+    placeholder:
+      en_US: https://llm.diffbot.com
+    help:
+      en_US: "Advanced. Leave blank for https://llm.diffbot.com. Must be https on a diffbot.com host, with no query string or credentials. Your token is sent to this host, so only use a Diffbot-operated host."
+  nlp_base:
+    type: text-input
+    required: false
+    label:
+      en_US: Natural language base URL (advanced)
+    placeholder:
+      en_US: https://nl.diffbot.com
+    help:
+      en_US: "Advanced. Leave blank for https://nl.diffbot.com. Must be https on a diffbot.com host, with no query string or credentials. Your token is sent to this host, so only use a Diffbot-operated host."
 tools:
   - tools/search_web.yaml
   - tools/extract.yaml
@@ -40,6 +76,11 @@ tools:
   - tools/crawl_start.yaml
   - tools/crawl_jobs.yaml
   - tools/resolve_entities.yaml
+  - tools/kg_query.yaml
+  - tools/kg_ontology.yaml
+  - tools/ask.yaml
+  - tools/nlp.yaml
+  - tools/account_usage.yaml
 extra:
   python:
     source: provider/diffbot.py
