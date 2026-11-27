@@ -86,6 +86,16 @@ parameters:
     human_description:
       en_US: Include a truncated article body. Off by default.
     llm_description: When true, each result includes a truncated text field. Default false.
+  - name: count_only
+    type: boolean
+    required: false
+    form: llm
+    default: false
+    label:
+      en_US: Count only
+    human_description:
+      en_US: Return only the number of matches (hits), with no records.
+    llm_description: Set true to get only the number of matching records. Default false.
   - name: size
     type: number
     required: false

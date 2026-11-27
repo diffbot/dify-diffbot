@@ -8,7 +8,7 @@ description:
     en_US: Find companies and other organizations in the Diffbot Knowledge Graph by name, homepage, industry category, headquarters, headcount, revenue, or public-company status.
   llm: >
     Search Diffbot Knowledge Graph organizations. Use this for firmographic facts, not for general web search.
-    Industry must match a Knowledge Graph category name such as "Software Companies"; free text often misses.
+    Industry is matched against Knowledge Graph category names such as "Software Companies" (case-insensitive); a miss returns suggestions. Set count_only to get just the number of matches.
     Revenue values are the raw revenue.value numbers, typically US dollars, not strings like 10M.
     At least one filter is required. Results omit employee rosters and contact details.
 parameters:
@@ -117,6 +117,16 @@ parameters:
       - value: "false"
         label:
           en_US: Not public
+  - name: count_only
+    type: boolean
+    required: false
+    form: llm
+    default: false
+    label:
+      en_US: Count only
+    human_description:
+      en_US: Return only the number of matches (hits), with no records.
+    llm_description: Set true to get only the number of matching records. Default false.
   - name: size
     type: number
     required: false

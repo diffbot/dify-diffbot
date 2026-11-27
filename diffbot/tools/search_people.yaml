@@ -58,6 +58,16 @@ parameters:
     human_description:
       en_US: Country on the public profile.
     llm_description: location.country.name.
+  - name: count_only
+    type: boolean
+    required: false
+    form: llm
+    default: false
+    label:
+      en_US: Count only
+    human_description:
+      en_US: Return only the number of matches (hits), with no records.
+    llm_description: Set true to get only the number of matching records. Default false.
   - name: size
     type: number
     required: false

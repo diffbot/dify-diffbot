@@ -59,6 +59,18 @@ parameters:
       - value: event
         label:
           en_US: Event
+      - value: job
+        label:
+          en_US: Job posting
+  - name: custom_api
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Custom API name
+    human_description:
+      en_US: Optional name of a Custom API you already created in Diffbot (letters, digits, - and _). When set it is used instead of the page type. This plugin does not create or edit Custom APIs.
+    llm_description: Leave empty.
   - name: format
     type: select
     required: false

@@ -1,0 +1,82 @@
+identity:
+  name: nlp
+  author: diffbot
+  label:
+    en_US: Natural language analysis
+description:
+  human:
+    en_US: Analyze one passage of text with Diffbot NLP. Choose which results to return, such as entities, sentiment, facts, records, categories, sentences, language, and a summary. Use Resolve entities for a Knowledge Graph filter.
+  llm: >
+    Run Diffbot natural language processing on one plain-text document (20000 characters maximum).
+    fields is a comma-separated list from entities, sentiment, facts, records, categories, sentences,
+    language, and summary; the default is entities,sentiment. Email and phone values in the output are removed.
+    Do not send secrets, credentials, or private messages.
+parameters:
+  - name: text
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Text
+    human_description:
+      en_US: Plain text to analyze (20000 characters maximum).
+    llm_description: Plain text to analyze. Do not include secrets. Maximum 20000 characters.
+  - name: fields
+    type: string
+    required: false
+    form: llm
+    default: entities,sentiment
+    label:
+      en_US: Fields
+    human_description:
+      en_US: "Comma-separated results to return: entities, sentiment, facts, records, categories, sentences, language, summary."
+    llm_description: "Comma-separated list from entities, sentiment, facts, records, categories, sentences, language, summary. Default entities,sentiment."
+  - name: lang
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Language
+    human_description:
+      en_US: Language of the text. Leave empty for auto, or pass a code such as en.
+    llm_description: auto, or a 2- or 3-letter ISO code. Default auto.
+  - name: format
+    type: select
+    required: false
+    form: form
+    default: plain text
+    label:
+      en_US: Text format
+    human_description:
+      en_US: Whether the first line of the text is a title.
+    llm_description: plain text, or plain text with title when the first line is a title.
+    options:
+      - value: plain text
+        label:
+          en_US: Plain text
+      - value: plain text with title
+        label:
+          en_US: Plain text with title
+  - name: document_type
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Document type
+    human_description:
+      en_US: Optional document type hint for Diffbot (letters, digits, spaces, - and _).
+    llm_description: Optional document type hint.
+  - name: max_number_of_sentences
+    type: number
+    required: false
+    form: form
+    min: 1
+    max: 10
+    label:
+      en_US: Summary sentences
+    human_description:
+      en_US: Most sentences in the summary (1 to 10). Used when the summary field is requested.
+    llm_description: Most sentences in the summary, 1 to 10.
+extra:
+  python:
+    source: tools/nlp.py

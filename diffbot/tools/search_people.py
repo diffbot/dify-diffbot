@@ -6,7 +6,7 @@ from typing import Any
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
-from tools.common import messages, optional_text, result_offset, result_size, run_dql
+from tools.common import count_payload, is_count_only, messages, optional_text, result_offset, result_size, run_dql
 from tools.dql_builder import build_people_query
 from tools.shape import summarize_lines, trim_kg
 
@@ -21,8 +21,13 @@ class SearchPeopleTool(Tool):
             "country": optional_text(tool_parameters, "country"),
         }
         query = build_people_query(parameters)
-        size = result_size(tool_parameters, default=5, maximum=100)
+        count_only = is_count_only(tool_parameters)
+        size = 0 if count_only else result_size(tool_parameters, default=5, maximum=100)
         data = run_dql(self.runtime.credentials, query, size=size, offset=result_offset(tool_parameters))
+        if count_only:
+            payload = count_payload(data)
+            yield from messages(self, f"{payload['hits']} matching person record(s) in the Knowledge Graph.", payload)
+            return
         payload = trim_kg(data, "person", limit=size)
         lines = []
         for index, row in enumerate(payload["results"], start=1):

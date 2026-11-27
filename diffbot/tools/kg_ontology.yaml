@@ -1,0 +1,84 @@
+identity:
+  name: kg_ontology
+  author: diffbot
+  label:
+    en_US: Knowledge Graph ontology
+description:
+  human:
+    en_US: Look up the Diffbot Knowledge Graph schema (entity types, field names, enums, and taxonomy values such as organization categories) before writing a DQL query. The ontology is a public document; no token is sent to fetch it.
+  llm: >
+    Look up the Diffbot Knowledge Graph ontology so DQL uses real names. lookup types, composites, enums,
+    or taxonomies lists names. lookup fields with name (for example Organization or Location) lists field
+    paths and types. lookup taxonomy_values with name OrganizationCategory lists valid industry category names.
+    lookup enum_values lists the allowed values of an enum. lookup find searches every name in the ontology.
+    search is a plain case-insensitive substring, not a regular expression.
+parameters:
+  - name: lookup
+    type: select
+    required: true
+    form: llm
+    default: types
+    label:
+      en_US: Lookup
+    human_description:
+      en_US: What to list. fields, taxonomy_values and enum_values need a name. find and raw_file ignore name.
+    llm_description: One of types, composites, enums, taxonomies, fields, taxonomy_values, enum_values, find. raw_file attaches the whole document and is for workflow builders.
+    options:
+      - value: types
+        label:
+          en_US: Entity types
+      - value: composites
+        label:
+          en_US: Composite types
+      - value: enums
+        label:
+          en_US: Enums
+      - value: taxonomies
+        label:
+          en_US: Taxonomies
+      - value: fields
+        label:
+          en_US: Fields of a type
+      - value: taxonomy_values
+        label:
+          en_US: Taxonomy values
+      - value: enum_values
+        label:
+          en_US: Enum values
+      - value: find
+        label:
+          en_US: Find a name
+      - value: raw_file
+        label:
+          en_US: Raw ontology file
+  - name: name
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Name
+    human_description:
+      en_US: Type, composite, taxonomy or enum name for fields, taxonomy_values and enum_values.
+    llm_description: Type or composite name (Organization, Person, Location), taxonomy name (OrganizationCategory), or enum name. Case-sensitive.
+  - name: search
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Search
+    human_description:
+      en_US: Case-insensitive text to look for in names (200 characters maximum). Not a regular expression.
+    llm_description: Case-insensitive substring to filter names (200 characters maximum). Required for find.
+  - name: include_deprecated
+    type: boolean
+    required: false
+    form: form
+    default: false
+    label:
+      en_US: Include deprecated fields
+    human_description:
+      en_US: Also list fields the ontology marks as deprecated (fields lookup only).
+    llm_description: Also list deprecated fields. Default false.
+extra:
+  python:
+    source: tools/kg_ontology.py

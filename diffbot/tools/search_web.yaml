@@ -26,6 +26,42 @@ parameters:
       A query of only url:https://example.com/page returns the stored page.
     placeholder:
       en_US: hypothyroidism treatment guidelines
+  - name: query_2
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Additional query 1
+    human_description:
+      en_US: Optional extra search text, searched together with the first query (2000 characters maximum).
+    llm_description: "Optional additional search text. Up to five queries in total. The url: shortcut applies only when there is a single query."
+  - name: query_3
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Additional query 2
+    human_description:
+      en_US: Optional extra search text, searched together with the first query (2000 characters maximum).
+    llm_description: "Optional additional search text. Up to five queries in total. The url: shortcut applies only when there is a single query."
+  - name: query_4
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Additional query 3
+    human_description:
+      en_US: Optional extra search text, searched together with the first query (2000 characters maximum).
+    llm_description: "Optional additional search text. Up to five queries in total. The url: shortcut applies only when there is a single query."
+  - name: query_5
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Additional query 4
+    human_description:
+      en_US: Optional extra search text, searched together with the first query (2000 characters maximum).
+    llm_description: "Optional additional search text. Up to five queries in total. The url: shortcut applies only when there is a single query."
   - name: num_results
     type: number
     required: false

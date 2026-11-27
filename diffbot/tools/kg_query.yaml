@@ -1,0 +1,221 @@
+identity:
+  name: kg_query
+  author: diffbot
+  label:
+    en_US: Knowledge Graph query (DQL)
+description:
+  human:
+    en_US: Run a raw Diffbot Query Language (DQL) query against the Knowledge Graph. Use Search organizations, people, or news for simple lookups, and the Knowledge Graph ontology tool to find real field names. JSON output drops email, phone and html fields; csv, xls and xlsx export files are returned as Diffbot sent them and are not scrubbed.
+  llm: >
+    Run a raw DQL query against the Diffbot Knowledge Graph, for example
+    type:Organization name:"Diffbot" or type:Article tags.label:"Artificial Intelligence" sortBy:date.
+    Look up valid field names and taxonomy values with the Knowledge Graph ontology tool first.
+    Set count_only true to get just the number of matches (hits). Otherwise size is 0 to 100 (default 10).
+    Raw entities can be large, so keep size small and use col to choose columns. Email, phone and html
+    fields are removed from the output. Do not send secrets in the query.
+parameters:
+  - name: query
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: DQL query
+    human_description:
+      en_US: The DQL query (10000 characters maximum), for example type:Organization location.country.name:"Japan".
+    llm_description: A DQL query string, at most 10000 characters. Quote values and use real field names from the ontology.
+    placeholder:
+      en_US: type:Organization name:"Diffbot"
+  - name: count_only
+    type: boolean
+    required: false
+    form: llm
+    default: false
+    label:
+      en_US: Count only
+    human_description:
+      en_US: "Return only the number of matches (hits), no records."
+    llm_description: "Return only the number of matches (hits), no records."
+  - name: size
+    type: number
+    required: false
+    form: llm
+    default: 10
+    min: 0
+    max: 100
+    label:
+      en_US: Maximum results
+    human_description:
+      en_US: "How many records to return, from 0 to 100. Ignored when Count only is on."
+    llm_description: "Result cap from 0 to 100. Default 10. 0 returns only the hit count."
+  - name: offset
+    type: number
+    required: false
+    form: llm
+    default: 0
+    min: 0
+    max: 100000
+    label:
+      en_US: Offset
+    human_description:
+      en_US: "Skip this many results first (0 to 100000). Sent to Diffbot as from."
+    llm_description: "Number of results to skip, 0 to 100000. Default 0."
+  - name: type
+    type: select
+    required: false
+    form: llm
+    label:
+      en_US: Query type
+    human_description:
+      en_US: "How Diffbot interprets the query: query (DQL), text, queryTextFallback or crawl."
+    llm_description: "query, text, queryTextFallback, or crawl. Leave empty for the default."
+    options:
+      - value: query
+        label:
+          en_US: query
+      - value: text
+        label:
+          en_US: text
+      - value: queryTextFallback
+        label:
+          en_US: queryTextFallback
+      - value: crawl
+        label:
+          en_US: crawl
+  - name: col
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Columns
+    human_description:
+      en_US: "Comma-separated fields to return instead of the whole entity."
+    llm_description: "Comma-separated field paths to return (smaller output). Leave empty for whole entities."
+  - name: filter
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Filter
+    human_description:
+      en_US: "Extra DQL filter applied to the results."
+    llm_description: "Optional extra filter expression applied to the results."
+  - name: filter_exclude
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Exclude filter
+    human_description:
+      en_US: "Fields to leave out of each record (Diffbot filterExclude)."
+    llm_description: "Optional comma-separated fields to leave out of each record."
+  - name: format
+    type: select
+    required: false
+    form: form
+    default: json
+    label:
+      en_US: Output format
+    human_description:
+      en_US: "json and jsonl come back as data with email, phone and html removed. csv, xls and xlsx come back as a file that is NOT scrubbed."
+    llm_description: "json and jsonl come back as data with email, phone and html removed. csv, xls and xlsx come back as a file that is NOT scrubbed."
+    options:
+      - value: json
+        label:
+          en_US: json
+      - value: jsonl
+        label:
+          en_US: jsonl
+      - value: csv
+        label:
+          en_US: csv
+      - value: xls
+        label:
+          en_US: xls
+      - value: xlsx
+        label:
+          en_US: xlsx
+  - name: exportspec
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Export spec
+    human_description:
+      en_US: "Column spec for csv, xls and xlsx exports."
+    llm_description: "Column spec for csv, xls and xlsx exports."
+  - name: exportseparator
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: CSV separator
+    human_description:
+      en_US: "Field separator for csv format only (use tab for a tab)."
+    llm_description: "Field separator for csv format only (use tab for a tab)."
+  - name: exportfile
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Export file name
+    human_description:
+      en_US: "Name for the attached export file, without extension (letters, digits, - and _). Not sent to Diffbot."
+    llm_description: "Name for the attached export file, without extension (letters, digits, - and _). Not sent to Diffbot."
+  - name: jsonmode
+    type: select
+    required: false
+    form: form
+    label:
+      en_US: JSON mode
+    human_description:
+      en_US: "extended returns full linked entities; id returns ids only."
+    llm_description: "extended returns full linked entities; id returns ids only."
+    options:
+      - value: extended
+        label:
+          en_US: extended
+      - value: id
+        label:
+          en_US: id
+  - name: non_canonical_facts
+    type: boolean
+    required: false
+    form: form
+    default: false
+    label:
+      en_US: Non-canonical facts
+    human_description:
+      en_US: "Include facts that are not the canonical value."
+    llm_description: "Include facts that are not the canonical value."
+  - name: no_dedup_articles
+    type: boolean
+    required: false
+    form: form
+    default: false
+    label:
+      en_US: Keep duplicate articles
+    human_description:
+      en_US: "Do not de-duplicate article results."
+    llm_description: "Do not de-duplicate article results."
+  - name: cluster
+    type: select
+    required: false
+    form: form
+    label:
+      en_US: Article clustering
+    human_description:
+      en_US: "Article queries only: return all, the best, or one deduplicated article per cluster."
+    llm_description: "Article queries only: return all, the best, or one deduplicated article per cluster."
+    options:
+      - value: all
+        label:
+          en_US: all
+      - value: best
+        label:
+          en_US: best
+      - value: dedupe
+        label:
+          en_US: dedupe
+extra:
+  python:
+    source: tools/kg_query.py

@@ -1,5 +1,6 @@
 """Start a Diffbot crawl job. Returns the job name, never results."""
 
+import re
 from collections.abc import Generator
 from typing import Any
 
@@ -12,6 +13,29 @@ from tools.dql_builder import bounded_number
 from tools.sdk import crawl_start
 
 MAX_JOB_NAME = 30
+MAX_PATTERN = 1000
+MAX_HEADERS = 10
+MAX_HEADER = 500
+_EMAIL = re.compile(r"^[^@\s,;<>]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9.\-]{0,251}[A-Za-z0-9])?\.[A-Za-z]{2,63}$")
+# Tri-state flags: "default" omits the parameter so the API default applies; off sends 0.
+# (Saved Dify forms keep old boolean values, so these fields have new names.)
+TRI_STATE = {"default": None, "on": True, "off": False}
+
+
+def _tri_state(parameters: dict[str, Any], name: str) -> bool | None:
+    value = optional_text(parameters, name).lower() or "default"
+    if value not in TRI_STATE:
+        raise DiffbotError(f"{name} must be default, on, or off.")
+    return TRI_STATE[value]
+
+
+def _headers(raw: str) -> list[str]:
+    headers = [line.strip() for line in raw.splitlines() if line.strip()]
+    if len(headers) > MAX_HEADERS:
+        raise DiffbotError(f"Too many custom headers ({MAX_HEADERS} maximum).")
+    if any(len(header) > MAX_HEADER for header in headers):
+        raise DiffbotError(f"A custom header is too long ({MAX_HEADER} characters maximum).")
+    return headers
 
 
 def _int(parameters: dict[str, Any], name: str, *, minimum: int, maximum: int) -> int | None:
@@ -40,7 +64,7 @@ class CrawlStartTool(Tool):
         name = optional_text(tool_parameters, "job_name")
         if name:
             # The crawler rejects names over 30 characters with HTTP 200 + errorCode 505
-            # and creates nothing; diffbot 3.2.0 does not surface that, so check here.
+            # and creates nothing; the SDK raises APIError for it, but check here for a clearer message.
             if not all(c.isalnum() or c in "-_." for c in name) or len(name) > MAX_JOB_NAME:
                 raise DiffbotError(
                     f"job_name may use letters, digits, '-', '_' and '.' ({MAX_JOB_NAME} characters maximum)."
@@ -54,16 +78,43 @@ class CrawlStartTool(Tool):
             value = _int(tool_parameters, param, minimum=low, maximum=high)
             if value is not None:
                 kwargs[key] = value
-        for param in ("restrict_domain", "obey_robots", "use_proxies"):
-            if isinstance(tool_parameters.get(param), bool):
-                kwargs[param] = tool_parameters[param]
+        if isinstance(tool_parameters.get("restrict_domain"), bool):
+            kwargs["restrict_domain"] = tool_parameters["restrict_domain"]
+        for param, key in (
+            ("obey_robots_mode", "obey_robots"),
+            ("use_proxies_mode", "use_proxies"),
+            ("use_canonical_mode", "use_canonical"),
+        ):
+            flag = _tri_state(tool_parameters, param)
+            if flag is not None:
+                kwargs[key] = flag
+        for param in ("max_to_crawl_per_subdomain", "max_to_process_per_subdomain"):
+            value = _int(tool_parameters, param, minimum=1, maximum=10000)
+            if value is not None:
+                kwargs[param] = value
         delay = tool_parameters.get("crawl_delay")
         if delay not in (None, ""):
             kwargs["crawl_delay"] = float(bounded_number(delay, label="crawl_delay", minimum=-1, maximum=3600))
-        for param in ("url_crawl_pattern", "url_process_pattern", "custom_headers"):
+        for param in ("url_crawl_pattern", "url_process_pattern", "url_crawl_regex", "url_process_regex", "page_process_pattern"):
             value = optional_text(tool_parameters, param)
+            if len(value) > MAX_PATTERN:
+                raise DiffbotError(f"{param} is too long ({MAX_PATTERN} characters maximum).")
             if value:
                 kwargs[param] = value
+        headers = _headers(optional_text(tool_parameters, "custom_headers"))
+        if headers:
+            kwargs["custom_headers"] = headers
+        webhook = optional_text(tool_parameters, "notify_webhook")
+        if webhook:
+            webhook = validate_public_http_url(webhook)
+            if not webhook.lower().startswith("https://"):
+                raise DiffbotError("notify_webhook must start with https://.")
+            kwargs["notify_webhook"] = webhook
+        email = optional_text(tool_parameters, "notify_email")
+        if email:
+            if len(email) > 254 or not _EMAIL.fullmatch(email):
+                raise DiffbotError("notify_email must be a valid email address.")
+            kwargs["notify_email"] = email
         api_url = optional_text(tool_parameters, "api_url")
         if api_url:
             kwargs["api_url"] = validate_public_http_url(api_url)

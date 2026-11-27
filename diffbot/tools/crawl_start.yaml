@@ -105,26 +105,133 @@ parameters:
     human_description:
       en_US: Seconds between requests; -1 uses the Diffbot default.
     llm_description: Seconds between requests; -1 uses the Diffbot default.
-  - name: obey_robots
-    type: boolean
+  - name: obey_robots_mode
+    type: select
     required: false
     form: form
-    default: false
+    default: default
     label:
       en_US: Obey robots.txt
     human_description:
-      en_US: Respect robots.txt.
-    llm_description: Respect robots.txt.
-  - name: use_proxies
-    type: boolean
+      en_US: Diffbot default leaves the setting to the crawler (it respects robots.txt). Off ignores robots.txt; only choose that for sites you own or have permission to crawl.
+    llm_description: Diffbot default leaves the setting to the crawler (it respects robots.txt). Off ignores robots.txt; only choose that for sites you own or have permission to crawl.
+    options:
+      - value: default
+        label:
+          en_US: Diffbot default
+      - value: "on"
+        label:
+          en_US: "On"
+      - value: "off"
+        label:
+          en_US: "Off"
+  - name: use_proxies_mode
+    type: select
     required: false
     form: form
-    default: false
+    default: default
     label:
       en_US: Use proxies
     human_description:
-      en_US: Route requests through Diffbot proxies.
-    llm_description: Route requests through Diffbot proxies.
+      en_US: Diffbot default leaves it to the crawler (proxies off). On routes requests through Diffbot proxies.
+    llm_description: Diffbot default leaves it to the crawler (proxies off). On routes requests through Diffbot proxies.
+    options:
+      - value: default
+        label:
+          en_US: Diffbot default
+      - value: "on"
+        label:
+          en_US: "On"
+      - value: "off"
+        label:
+          en_US: "Off"
+  - name: use_canonical_mode
+    type: select
+    required: false
+    form: form
+    default: default
+    label:
+      en_US: Use canonical URLs
+    human_description:
+      en_US: Diffbot default leaves it to the crawler. On or off sets canonical-link handling explicitly.
+    llm_description: Diffbot default leaves it to the crawler. On or off sets canonical-link handling explicitly.
+    options:
+      - value: default
+        label:
+          en_US: Diffbot default
+      - value: "on"
+        label:
+          en_US: "On"
+      - value: "off"
+        label:
+          en_US: "Off"
+  - name: url_crawl_regex
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: URL crawl regex
+    human_description:
+      en_US: "Only follow URLs matching this regular expression (1000 characters maximum)."
+    llm_description: "Only follow URLs matching this regular expression (1000 characters maximum)."
+  - name: url_process_regex
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: URL process regex
+    human_description:
+      en_US: "Only extract URLs matching this regular expression (1000 characters maximum)."
+    llm_description: "Only extract URLs matching this regular expression (1000 characters maximum)."
+  - name: page_process_pattern
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Page process pattern
+    human_description:
+      en_US: "Only extract pages whose HTML contains one of these strings."
+    llm_description: "Only extract pages whose HTML contains one of these strings."
+  - name: max_to_crawl_per_subdomain
+    type: number
+    required: false
+    form: form
+    min: 1
+    max: 10000
+    label:
+      en_US: Max pages to crawl per subdomain
+    human_description:
+      en_US: "Most pages to fetch on any one subdomain (1-10000)."
+    llm_description: "Most pages to fetch on any one subdomain (1-10000)."
+  - name: max_to_process_per_subdomain
+    type: number
+    required: false
+    form: form
+    min: 1
+    max: 10000
+    label:
+      en_US: Max pages to process per subdomain
+    human_description:
+      en_US: "Most pages to extract on any one subdomain (1-10000)."
+    llm_description: "Most pages to extract on any one subdomain (1-10000)."
+  - name: notify_webhook
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Notify webhook URL
+    human_description:
+      en_US: "Public https URL Diffbot calls when the job finishes. Do not put secrets in the URL: it is stored with the crawl job."
+    llm_description: "Public https URL Diffbot calls when the job finishes. Do not put secrets in the URL: it is stored with the crawl job."
+  - name: notify_email
+    type: string
+    required: false
+    form: form
+    label:
+      en_US: Notify email
+    human_description:
+      en_US: "Email address Diffbot writes to when the job finishes. It is sent to Diffbot with the crawl job."
+    llm_description: "Email address Diffbot writes to when the job finishes. It is sent to Diffbot with the crawl job."
   - name: api_url
     type: string
     required: false
@@ -141,8 +248,8 @@ parameters:
     label:
       en_US: Custom headers
     human_description:
-      en_US: "Optional header to send with each request. Do not put secrets here: the crawler sends it to the sites."
-    llm_description: "Optional header to send with each request. Do not put secrets here: the crawler sends it to the sites."
+      en_US: "Optional headers to send with each request, one per line (10 maximum). Do not put secrets here: the crawler sends them to the sites and stores them with the job."
+    llm_description: "Optional headers, one per line. Do not put secrets here."
 extra:
   python:
     source: tools/crawl_start.py
