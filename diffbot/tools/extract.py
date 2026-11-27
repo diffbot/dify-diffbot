@@ -13,11 +13,12 @@ from tools.dql_builder import bounded_number
 from tools.sdk import as_dict, extract
 from tools.shape import summarize_lines, trim_extract
 
-PAGE_TYPES = {"auto", "article", "product", "discussion", "image", "video", "list", "event"}
+PAGE_TYPES = {"auto", "article", "product", "discussion", "image", "video", "list", "event", "job"}
+CUSTOM_API = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
 
 
 FIELD_PATTERN = re.compile(r"^[A-Za-z0-9_.*,\-]{1,500}$")
-# Value sets from the SDK 3.3.0 types (ExtractMode, ExtractFallback, UseProxy, NaturalLanguageField).
+# Value sets from the diffbot 3.4.1 types (ExtractMode, ExtractFallback, UseProxy, NaturalLanguageField).
 MODES = {"article", "product", "discussion", "image", "video", "list", "event", "llm"}
 FALLBACKS = {"article", "product", "discussion", "image", "video", "list", "event"}
 PROXIES = {"default", "none"}
@@ -36,7 +37,7 @@ _BOOLEANS = ("discussion", "paging")
 
 
 def _extract_options(parameters: dict[str, Any]) -> dict[str, Any]:
-    """Caller-set Extract options, named as in diffbot 3.3.0; unset ones are omitted."""
+    """Caller-set Extract options, named as in diffbot 3.4.1; unset ones are omitted."""
     options: dict[str, Any] = {}
     fields = optional_text(parameters, "fields").replace(" ", "")
     if fields:
@@ -78,8 +79,12 @@ class ExtractTool(Tool):
         page_type = optional_text(tool_parameters, "page_type").lower() or "auto"
         if page_type not in PAGE_TYPES:
             raise DiffbotError(
-                "page_type must be auto, article, product, discussion, image, video, list, or event."
+                "page_type must be auto, article, product, discussion, image, video, list, event, or job."
             )
+        # An already-created custom API is called by name; managing custom APIs is out of scope.
+        custom_api = optional_text(tool_parameters, "custom_api")
+        if custom_api and not CUSTOM_API.fullmatch(custom_api):
+            raise DiffbotError("custom_api may use letters, digits, '-' and '_' (100 characters maximum).")
         output_format = optional_text(tool_parameters, "format").lower() or "markdown"
         if output_format not in {"markdown", "json"}:
             raise DiffbotError("format must be markdown or json.")
@@ -88,12 +93,16 @@ class ExtractTool(Tool):
         client = make_client(self.runtime.credentials)
         with client, mapped_errors(client):
             data = as_dict(
-                extract(client, url, "analyze" if page_type == "auto" else page_type, output_format, options),
+                extract(
+                    client, url, custom_api or ("analyze" if page_type == "auto" else page_type), output_format, options
+                ),
                 "extract",
             )
         payload = trim_extract(data)
         payload["url"] = url
         payload["page_type"] = page_type
+        if custom_api:
+            payload["custom_api"] = custom_api
         lines = []
         for obj in payload["objects"]:
             title = obj.get("title") or obj.get("pageUrl") or "Extracted page"

@@ -1,7 +1,7 @@
 """Builds the Diffbot SDK client and adapts it to this plugin's policy.
 
 The plugin runs on the ``diffbot`` Python SDK (sync ``Diffbot`` client), pinned to
-``diffbot==3.4.0``. Every call goes through the guarded transport built here, and SDK
+``diffbot==3.4.1``. Every call goes through the guarded transport built here, and SDK
 errors are mapped to token-free plugin messages.
 """
 
@@ -11,6 +11,7 @@ import csv
 import io
 import json
 import urllib.request
+from urllib.parse import urlparse
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any, cast
@@ -92,13 +93,56 @@ def parse_timeout(value: Any) -> float:
     return seconds
 
 
+BASE_FIELDS = {
+    "api_base": "api_base",
+    "kg_base": "kg_base",
+    "llm_base": "llm_base",
+    "nlp_base": "nlp_base",
+}
+ALLOWED_BASE_DOMAIN = "diffbot.com"
+
+
+def validate_base_url(value: str, label: str) -> str:
+    """Check an endpoint-override base: https, a Diffbot host, nothing else.
+
+    The token travels to these hosts, so only ``diffbot.com`` and its subdomains pass.
+    The trailing slash is stripped because the SDK appends paths directly.
+    """
+    value = value.strip()
+    if len(value) > 2048:
+        raise DiffbotError(f"{label} is too long.")
+    parsed = urlparse(value)
+    if parsed.scheme != "https":
+        raise DiffbotError(f"{label} must start with https://.")
+    if parsed.username or parsed.password:
+        raise DiffbotError(f"{label} must not include a username or password.")
+    if parsed.query or parsed.fragment or parsed.params:
+        raise DiffbotError(f"{label} must not include a query string or fragment.")
+    try:
+        port = parsed.port
+    except ValueError:
+        raise DiffbotError(f"{label} has an invalid port.") from None
+    if port not in (None, 443):
+        raise DiffbotError(f"{label} must use the default https port.")
+    host = (parsed.hostname or "").rstrip(".").lower()
+    check_public_host(host)
+    if host != ALLOWED_BASE_DOMAIN and not host.endswith("." + ALLOWED_BASE_DOMAIN):
+        raise DiffbotError(f"{label} must be a diffbot.com host.")
+    return value.rstrip("/")
+
+
 def make_client(credentials: Mapping[str, Any] | None, *, transport: httpx.BaseTransport | None = None) -> Diffbot:
     """Validate the credential form and return an SDK client behind the host guard."""
     credentials = credentials or {}
     raw = credentials.get("diffbot_token", "")
     token = normalize_token(raw if isinstance(raw, str) else "")
     timeout = parse_timeout(credentials.get("request_timeout"))
-    return Diffbot(token, timeout=timeout, transport=GuardedTransport(transport))
+    bases: dict[str, str] = {}
+    for field in BASE_FIELDS:
+        value = credentials.get(field)
+        if isinstance(value, str) and value.strip():
+            bases[field] = validate_base_url(value, field)
+    return Diffbot(token, timeout=timeout, transport=GuardedTransport(transport), **bases)
 
 
 def api_error_message(exc: BaseException, token: str) -> str:
