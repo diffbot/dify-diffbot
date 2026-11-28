@@ -1,0 +1,276 @@
+name: Release
+
+# Builds the Dify plugin package (diffbot-<version>.difypkg) and publishes it on a
+# GitHub Release, which is what Dify's "Install plugin from GitHub" reads.
+#
+# Contract:
+# - Pushing a tag vX.Y.Z (or vX.Y.Z-rc.N) runs verify -> gates -> package ->
+#   github-release. The tag must equal `version` in diffbot/manifest.yaml, which must
+#   equal `[project] version` in diffbot/pyproject.toml, and CHANGELOG.md must have a
+#   "## [X.Y.Z]" section. The release notes are that section. A version containing "-"
+#   is a prerelease: it may reuse the base "## [X.Y.Z]" section and its GitHub Release
+#   is marked Pre-release.
+# - workflow_dispatch is a dry run: verify, gates and package run and the .difypkg is
+#   uploaded as a workflow artifact. A dispatch never creates or edits a GitHub
+#   Release, even on a tag ref.
+# - Official .difypkg files come only from this workflow. Nobody commits one (dist/ is
+#   gitignored) or attaches a hand-built one to a release.
+# - This workflow does NOT submit to the Dify Marketplace (that is the manual
+#   SUBMISSION.md runbook) and does NOT sign the package (Dify signs marketplace
+#   builds after review). No secrets are used; tests are offline (httpx.MockTransport).
+#
+# Shared ideas (CHANGELOG-driven notes, --prerelease for "-" versions, dispatch dry
+# run) follow the diffbot npm release standard; see diffbot-dev-docs
+# docs/conventions/dify-plugin-release.md for this repo's standard.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A release run is never cancelled halfway; re-runs for the same ref queue.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # manifest.yaml is the source of truth; pyproject.toml and the tag must agree.
+      # Only the top-level (unindented) `version:` is read: meta.version is the manifest
+      # schema version and meta.runner.version is Python, neither is the plugin version.
+      - name: Check tag matches plugin version
+        id: version
+        run: |
+          set -euo pipefail
+          manifest=$(sed -n 's/^version:[[:space:]]*//p' diffbot/manifest.yaml | tr -d "\"' \r")
+          if [ -z "$manifest" ] || [ "$(printf '%s\n' "$manifest" | wc -l)" -ne 1 ]; then
+            echo "::error::Could not read a single top-level version from diffbot/manifest.yaml."
+            exit 1
+          fi
+          if ! printf '%s' "$manifest" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::diffbot/manifest.yaml version '${manifest}' is not like 1.2.3 or 1.2.3-rc.0."
+            exit 1
+          fi
+          pyproject=$(python3 -c 'import tomllib; print(tomllib.load(open("diffbot/pyproject.toml", "rb"))["project"]["version"])')
+          if [ "$manifest" != "$pyproject" ]; then
+            echo "::error::diffbot/manifest.yaml version ${manifest} does not match diffbot/pyproject.toml version ${pyproject}."
+            exit 1
+          fi
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag=${GITHUB_REF_NAME#v}
+            if [ "$manifest" != "$tag" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match plugin version ${manifest}. Bump diffbot/manifest.yaml and diffbot/pyproject.toml, then re-tag."
+              exit 1
+            fi
+          fi
+          echo "version=${manifest}" >> "$GITHUB_OUTPUT"
+          echo "Versions agree: ${manifest}"
+
+      # Checked before the gates so a tag without release notes fails within seconds.
+      # Headings are Keep a Changelog style, matched at the start of the line, so a
+      # non-version heading such as "## Earlier, ..." never counts.
+      - name: Check CHANGELOG.md has a section for this version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          has_section() {
+            awk -v hdr="## [$1]" 'index($0, hdr) == 1 { found = 1 } END { exit !found }' CHANGELOG.md
+          }
+          # A prerelease (0.2.1-rc.0) may reuse its base version's section (0.2.1).
+          if has_section "${VERSION}"; then
+            hdr_version="${VERSION}"
+          elif [ "${VERSION%%-*}" != "${VERSION}" ] && has_section "${VERSION%%-*}"; then
+            hdr_version="${VERSION%%-*}"
+            echo "Prerelease ${VERSION}: using the '## [${hdr_version}]' section."
+          else
+            echo "::error::CHANGELOG.md has no '## [${VERSION}]' section."
+            exit 1
+          fi
+          body=$(awk -v hdr="## [${hdr_version}]" '
+            index($0, hdr) == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md)
+          if ! printf '%s' "$body" | grep -q '[^[:space:]]'; then
+            echo "::error::CHANGELOG.md section '## [${hdr_version}]' is empty."
+            exit 1
+          fi
+          echo "Found '## [${hdr_version}]'."
+
+  # Same commands as test.yml. Offline only: no live tests, no secrets.
+  gates:
+    name: Gates (pytest)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: diffbot/requirements.txt
+      - run: pip install -r diffbot/requirements.txt pytest
+      - run: pytest -q
+
+  package:
+    name: Package .difypkg
+    needs: [verify, gates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Pinned dify CLI from https://github.com/langgenius/dify-plugin-daemon/releases.
+      # The release publishes no checksum file; the SHA256 is the asset digest GitHub
+      # reports for dify-plugin-linux-amd64. To bump (see the dev-docs standard):
+      #   gh release view <tag> --repo langgenius/dify-plugin-daemon \
+      #     --json assets --jq '.assets[] | select(.name=="dify-plugin-linux-amd64") | .digest'
+      # then update both values here in one PR and dispatch a dry run.
+      DIFY_CLI_VERSION: "0.6.15"
+      DIFY_CLI_SHA256: "d0a1e3b25bd6c5f6cd749cad2cf04817ea808344e6cc07a2c49bb0108019ab93"
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install pinned dify CLI
+        run: |
+          set -euo pipefail
+          bin="${RUNNER_TEMP}/bin"
+          mkdir -p "$bin"
+          curl -fsSL --retry 3 -o "${bin}/dify" \
+            "https://github.com/langgenius/dify-plugin-daemon/releases/download/${DIFY_CLI_VERSION}/dify-plugin-linux-amd64"
+          echo "${DIFY_CLI_SHA256}  ${bin}/dify" | sha256sum -c -
+          chmod +x "${bin}/dify"
+          echo "$bin" >> "$GITHUB_PATH"
+          "${bin}/dify" version
+
+      - name: Build package
+        run: |
+          set -euo pipefail
+          dify plugin package ./diffbot -o "diffbot-${VERSION}.difypkg"
+
+      # Sanity checks: the file exists, has a plausible size (the 0.1.0 package was
+      # about 49 KB), contains the manifest, and contains nothing that .difyignore
+      # should have kept out.
+      - name: Check package
+        run: |
+          set -euo pipefail
+          pkg="diffbot-${VERSION}.difypkg"
+          size=$(stat -c %s "$pkg")
+          if [ "$size" -lt 10240 ] || [ "$size" -gt 10485760 ]; then
+            echo "::error::${pkg} is ${size} bytes; expected between 10 KiB and 10 MiB."
+            exit 1
+          fi
+          files=$(unzip -Z1 "$pkg")
+          if ! printf '%s\n' "$files" | grep -qx 'manifest.yaml'; then
+            echo "::error::${pkg} has no top-level manifest.yaml."
+            exit 1
+          fi
+          if printf '%s\n' "$files" | grep -E '(^|/)(\.env|\.git/.*|\.venv/.*|__pycache__/.*|[^/]*\.pem)$'; then
+            echo "::error::${pkg} contains files that must not ship (listed above)."
+            exit 1
+          fi
+          sha=$(sha256sum "$pkg" | cut -d' ' -f1)
+          # The CLI logs "plugin checksum checksum=<hex>" on stderr.
+          dify_checksum=$(dify plugin checksum "$pkg" 2>&1 | sed -n 's/.*checksum=\([0-9a-f]\{64\}\).*/\1/p')
+          if [ -z "$dify_checksum" ]; then
+            echo "::error::Could not read a checksum from 'dify plugin checksum'."
+            exit 1
+          fi
+          {
+            echo "### ${pkg}"
+            echo ""
+            echo "- Size: ${size} bytes, $(printf '%s\n' "$files" | wc -l) files"
+            echo "- SHA256: \`${sha}\`"
+            echo "- \`dify plugin checksum\`: \`${dify_checksum}\`"
+            echo "- dify CLI: ${DIFY_CLI_VERSION}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: difypkg
+          path: diffbot-${{ needs.verify.outputs.version }}.difypkg
+          if-no-files-found: error
+          retention-days: 30
+
+  github-release:
+    name: Publish GitHub Release
+    needs: [verify, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Only for real tag pushes; a workflow_dispatch (even on a tag ref) stops at package.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: difypkg
+          path: ${{ runner.temp }}/difypkg
+
+      - name: Extract release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Everything after "## [VERSION]" up to the next "## " heading. A prerelease
+          # without its own section uses its base version's section.
+          hdr_version="${VERSION}"
+          if ! awk -v hdr="## [${VERSION}]" 'index($0, hdr) == 1 { found = 1 } END { exit !found }' CHANGELOG.md; then
+            hdr_version="${VERSION%%-*}"
+          fi
+          awk -v hdr="## [${hdr_version}]" '
+            index($0, hdr) == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > "${RUNNER_TEMP}/notes.md"
+          if ! grep -q '[^[:space:]]' "${RUNNER_TEMP}/notes.md"; then
+            echo "::error::CHANGELOG.md section for ${VERSION} is empty."
+            exit 1
+          fi
+          wc -l "${RUNNER_TEMP}/notes.md"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          repo="${GITHUB_REPOSITORY}"
+          pkg="${RUNNER_TEMP}/difypkg/diffbot-${VERSION}.difypkg"
+          test -s "$pkg"
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            echo "Release $tag already exists; leaving its notes as they are and re-uploading the package."
+            gh release upload "$tag" "$pkg" --repo "$repo" --clobber
+            exit 0
+          fi
+          prerelease=()
+          case "$VERSION" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$tag" "$pkg" \
+            --repo "$repo" \
+            --title "$tag" \
+            --verify-tag \
+            --notes-file "${RUNNER_TEMP}/notes.md" \
+            "${prerelease[@]}"

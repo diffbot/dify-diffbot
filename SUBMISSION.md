@@ -106,6 +106,14 @@ By default the plugin process only talks to these four hosts. Tool parameters ca
 
 ## Package the file they will attach
 
+Once the version is tagged, the `.difypkg` to submit is the one `.github/workflows/release.yml` attached to its GitHub Release. Then the marketplace file and the "Install plugin from GitHub" file are the same bytes. Download it and validate that file:
+
+```bash
+gh release download v0.2.0 --repo diffbot/dify-diffbot --pattern 'diffbot-0.2.0.difypkg' --dir dist
+```
+
+The release workflow does not open the marketplace PR. Everything below is still manual. A local build, for checking before a tag exists:
+
 From a checkout of the plugin, with the Dify plugin CLI (the 18 November 2026 run used `dify` v0.6.15, the same as the v0.1 run):
 
 ```bash

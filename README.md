@@ -48,15 +48,36 @@ The tests serve every request from `httpx.MockTransport` and make no Diffbot cal
 
 GitHub CI (`.github/workflows/test.yml`) installs `diffbot/requirements.txt`, including `diffbot==3.4.1`, and runs the full suite.
 
-## Package
+## Release
 
-Install the Dify plugin CLI from [langgenius/dify-plugin-daemon](https://github.com/langgenius/dify-plugin-daemon) and run from the repository root:
+The official package is built by CI, not by hand. `.github/workflows/release.yml` runs when a `vX.Y.Z` tag is pushed:
+
+1. `verify`: the tag must equal `version` in `diffbot/manifest.yaml`, which must equal `[project] version` in `diffbot/pyproject.toml`, and `CHANGELOG.md` must have a `## [X.Y.Z]` section.
+2. `gates`: the same offline `pytest -q` as `test.yml`.
+3. `package`: `dify plugin package ./diffbot -o diffbot-X.Y.Z.difypkg` with a pinned, checksum-verified dify CLI (currently 0.6.15), plus size and content checks. The package is uploaded as the `difypkg` workflow artifact.
+4. `github-release`: creates the GitHub Release for the tag with the CHANGELOG section as notes and the `.difypkg` attached. A version containing `-` (for example `0.2.1-rc.0`) is marked Pre-release and may reuse the base `## [0.2.1]` section.
+
+To cut a release, bump `version` in `diffbot/manifest.yaml` and `diffbot/pyproject.toml` and add the `## [X.Y.Z] - YYYY-MM-DD` CHANGELOG section in a PR, merge it, then tag the merge commit and push the tag:
+
+```bash
+git fetch origin && git tag vX.Y.Z origin/main && git push origin vX.Y.Z
+```
+
+`gh workflow run release.yml --repo diffbot/dify-diffbot --ref <branch>` is a dry run: it runs verify, gates and package and uploads the `difypkg` artifact, and never creates a GitHub Release, even on a tag ref.
+
+Dify's "Install plugin from GitHub" reads these Releases: enter `https://github.com/diffbot/dify-diffbot`, pick the version, and pick `diffbot-X.Y.Z.difypkg`.
+
+The workflow does not sign the package and does not submit it to the Dify Marketplace. Marketplace submission is a separate manual step (SUBMISSION.md). Do not commit a `.difypkg` or attach a hand-built one to a Release.
+
+## Package locally (development)
+
+For local testing, install the Dify plugin CLI from [langgenius/dify-plugin-daemon](https://github.com/langgenius/dify-plugin-daemon) and run from the repository root:
 
 ```bash
 dify plugin package ./diffbot -o dist/diffbot-0.2.0.difypkg
 dify plugin checksum dist/diffbot-0.2.0.difypkg
 ```
 
-`dist/` is ignored by git. The package is unsigned; Dify signs marketplace builds after review. Self-hosted Dify rejects unsigned local installs unless an administrator trusts a signature or turns off verification. Signing commands are in `diffbot/README.md`. Never commit a private key.
+`dist/` is ignored by git. The package is unsigned, whether built locally or by the release workflow; Dify signs marketplace builds after review. Self-hosted Dify rejects unsigned installs (local file or GitHub) unless an administrator trusts a signature or turns off verification. Signing commands are in `diffbot/README.md`. Never commit a private key.
 
 Marketplace validation is `validator/validate-difypkg.py` from [langgenius/dify-marketplace-toolkit](https://github.com/langgenius/dify-marketplace-toolkit). The last result is recorded in SUBMISSION.md.
