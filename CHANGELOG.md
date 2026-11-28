@@ -1,8 +1,8 @@
 # Changelog
 
-## [0.2.0] - SDK 3.4.1 parity
+## [0.2.0] - 2026-11-27
 
-Pins `diffbot==3.4.1` (exact). Not released: no tag, no marketplace submission.
+Pins `diffbot==3.4.1` (exact).
 
 ### Added
 
