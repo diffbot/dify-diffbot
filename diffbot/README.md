@@ -46,6 +46,10 @@ In an Agent, add the Diffbot tools and ask for a company, a news topic, or a URL
 
 Extract accepts `http` and `https` URLs; a bare domain such as `example.com` gets `https://`. Localhost, link-local, and private literal addresses are rejected before the request is sent.
 
+## Install from GitHub
+
+Each tagged version has a GitHub Release at https://github.com/diffbot/dify-diffbot/releases with the `.difypkg` attached, built by the repository's release workflow. In Dify, open Plugins, choose Install plugin from GitHub, enter `https://github.com/diffbot/dify-diffbot`, then pick the version and `diffbot-<version>.difypkg`. The package is unsigned, so the signature notes below apply to this route too.
+
 ## Install the package locally
 
 From the repository root, with the [Dify plugin CLI](https://github.com/langgenius/dify-plugin-daemon) installed:

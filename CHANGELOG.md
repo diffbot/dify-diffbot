@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 - SDK 3.4.1 parity
+## [0.2.0] - SDK 3.4.1 parity
 
 Pins `diffbot==3.4.1` (exact). Not released: no tag, no marketplace submission.
 
@@ -28,7 +28,7 @@ Pins `diffbot==3.4.1` (exact). Not released: no tag, no marketplace submission.
 - Removed the `client.request()` fallbacks in `diffbot/tools/sdk.py` for `verify_token`, `crawl_download`, and extract options, and the local response TypedDicts in `tools/sdk_types.py`. `diffbot==3.4.0` has all of them natively. No behavior change.
 - Reran the marketplace validator on the rebuilt package; results are in SUBMISSION.md.
 
-## 0.1.0 - 2026-11-17
+## [0.1.0] - 2026-11-17
 
 Plugin version stays 0.1.0. It is not on the Dify Marketplace.
 
